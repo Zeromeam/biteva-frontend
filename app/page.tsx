@@ -1,5 +1,5 @@
-import RevealHero from "@/components/reveal-hero";
+// import RevealHero from "@/components/reveal-hero";
 
 export default function HomePage() {
-  return <RevealHero />;
+  return null;
 }
