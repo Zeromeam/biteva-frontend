@@ -133,10 +133,11 @@ export default function AdminOrdersPage() {
         });
         const data = (await response.json()) as OrdersResponse | { error?: string };
 
-        if (!response.ok || !("ok" in data)) {
-          throw new Error(data.error ?? "Could not load orders.");
-        }
 
+        if (!response.ok || !("ok" in data)) {
+          const message = "error" in data ? data.error : undefined;
+          throw new Error(message ?? "Could not load orders.");
+        }
         if (cancelled) {
           return;
         }
