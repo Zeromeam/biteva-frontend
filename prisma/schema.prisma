@@ -36,16 +36,24 @@ model Customer {
 }
 
 model Order {
-  id                String       @id @default(cuid())
-  orderNumber       String       @unique
-  status            OrderStatus  @default(PENDING)
-  currency          String       @default("EUR")
-  totalAmountCents  Int
-  customerId        String
-  customer          Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  items             OrderItem[]
+  id                   String       @id @default(cuid())
+  orderNumber          String       @unique
+  status               OrderStatus  @default(PENDING)
+  currency             String       @default("EUR")
+  totalAmountCents     Int
+  customerId           String
+  customer             Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  shippingFullName     String?
+  shippingEmail        String?
+  shippingPhone        String?
+  shippingAddressLine1 String?
+  shippingAddressLine2 String?
+  shippingCity         String?
+  shippingPostalCode   String?
+  shippingCountry      String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  items                OrderItem[]
 }
 
 model OrderItem {
