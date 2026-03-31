@@ -64,8 +64,9 @@ export default function OrderPage() {
 
       const data = (await response.json()) as OrderResponse | ErrorResponse;
 
+      
       if (!response.ok || !("ok" in data)) {
-        setError(data.error ?? "Could not create your order.");
+        setError("error" in data ? (data.error ?? "Could not create your order.") : "Could not create your order.");
         return;
       }
 
