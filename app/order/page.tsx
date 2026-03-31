@@ -99,11 +99,12 @@ export default function OrderPage() {
 
       const data = (await response.json()) as OrderResponse | ErrorResponse;
 
+
       if (!response.ok || !("ok" in data)) {
-        setError(data.error ?? "Could not create your order.");
+        const message = "error" in data ? data.error : undefined;
+        setError(message ?? "Could not create your order.");
         return;
       }
-
       setSuccess(data.order);
       setForm(INITIAL_FORM);
     } catch {
