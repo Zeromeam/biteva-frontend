@@ -55,7 +55,7 @@ select {
 .hero-image--base {
   background-image:
     linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.55)),
-    url("/images/biteva-closed.jpg");
+    url("/images/biteva-closed.png");
 }
 
 .hero-image--reveal {
