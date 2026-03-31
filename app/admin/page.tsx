@@ -199,10 +199,11 @@ export default function AdminOrdersPage() {
     });
     const data = (await response.json()) as SingleOrderResponse | { error?: string };
 
-    if (!response.ok || !("ok" in data)) {
-      throw new Error(data.error ?? "Could not refresh the order.");
-    }
 
+    if (!response.ok || !("ok" in data)) {
+      const message = "error" in data ? data.error : undefined;
+      throw new Error(message ?? "Could not refresh the order.");
+    }
     setSelectedOrder(data.order);
     setOrders((current) =>
       current.map((order) => (order.id === data.order.id ? data.order : order))
@@ -224,9 +225,9 @@ export default function AdminOrdersPage() {
       const data = (await response.json()) as SingleOrderResponse | { error?: string };
 
       if (!response.ok || !("ok" in data)) {
-        throw new Error(data.error ?? "Could not update the order.");
+        const message = "error" in data ? data.error : undefined;
+        throw new Error(message ?? "Could not update the order.");
       }
-
       setOrders((current) =>
         current.map((order) => (order.id === data.order.id ? data.order : order))
       );
