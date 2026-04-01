@@ -39,21 +39,21 @@ const products: MenuProduct[] = [
     name: "Beef",
     description: "Tender beef, fresh bread, strong flavor.",
     price: 10.9,
-    image: "/images/order/beef.jpg",
+    image: "/images/order/beef.png",
   },
   {
     id: "chicken-skewer",
     name: "Chicken Skewer",
     description: "Juicy chicken skewers with a lighter taste.",
     price: 9.9,
-    image: "/images/order/chicken-skewer.jpg",
+    image: "/images/order/chicken-skewer.png",
   },
   {
     id: "vegan",
     name: "Vegan",
     description: "A full vegan option with bold seasoning.",
     price: 9.4,
-    image: "/images/order/vegan.jpg",
+    image: "/images/order/vegan.png",
   },
 ];
 

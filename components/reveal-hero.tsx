@@ -33,7 +33,7 @@ export default function RevealHero() {
 
   const revealStyle = useMemo(
     () => ({
-      clipPath: `circle(${radius}% at ${pointer.x}% ${pointer.y}%)`,
+      clipPath: `circle(${radius*0}% at ${pointer.x*0}% ${pointer.y*0}%)`,
     }),
     [pointer, radius]
   );
