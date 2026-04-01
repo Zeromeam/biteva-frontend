@@ -34,21 +34,21 @@ export const products: MenuProduct[] = [
     name: "Beef",
     subtitle: "Bold grilled flavor, rich and satisfying.",
     price: 10.9,
-    image: "/images/order/beef.jpg",
+    image: "/images/order/beef.png",
   },
   {
     id: "chicken-skewer",
     name: "Chicken Skewer",
     subtitle: "Juicy skewers with a lighter finish.",
     price: 9.9,
-    image: "/images/order/chicken-skewer.jpg",
+    image: "/images/order/chicken-skewer.png",
   },
   {
     id: "vegan",
     name: "Vegan",
     subtitle: "Fresh, seasoned, clean, and filling.",
     price: 9.4,
-    image: "/images/order/vegan.jpg",
+    image: "/images/order/vegan.png",
   },
 ];
 
