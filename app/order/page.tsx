@@ -36,7 +36,7 @@ const STEPS: { id: StepId; label: string; hint: string }[] = [
   { id: "sides",   label: "Sides",   hint: `${FREE_SIDES} included free` },
   { id: "sauces",  label: "Sauces",  hint: `${FREE_SAUCES} included free` },
   { id: "pickles", label: "Pickles", hint: `${FREE_PICKLES} included free` },
-  { id: "drinks",  label: "Drinks",  hint: "1 included free"              },
+  { id: "drinks",  label: "Drinks",  hint: ""              },
 ];
 
 // qty map: { [itemId]: count }
@@ -80,7 +80,7 @@ function extraCost(items: MenuOption[], qm: QtyMap, freeUnits: number): number {
 
 function drinksCost(qm: QtyMap): number {
   let total = 0;
-  let free = 1;
+  let free = 0;
   const sorted = [...drinks]
     .filter((d) => (qm[d.id] ?? 0) > 0)
     .sort((a, b) => a.price - b.price);
