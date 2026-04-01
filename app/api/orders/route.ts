@@ -6,22 +6,11 @@ import { makeOrderNumber } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
+// ── GET (unchanged) ──────────────────────────────────────────────────────
+
 const ORDER_STATUSES = ["PENDING", "PAID", "CANCELLED"] as const;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
-
-const createOrderSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is too short"),
-  email: z.string().trim().email("Invalid email address"),
-  phone: z.string().trim().optional().or(z.literal("")),
-  productSlug: z.string().trim().min(1),
-  quantity: z.coerce.number().int().min(1).max(20),
-  addressLine1: z.string().trim().min(3, "Address line 1 is too short"),
-  addressLine2: z.string().trim().optional().or(z.literal("")),
-  city: z.string().trim().min(2, "City is too short"),
-  postalCode: z.string().trim().min(2, "Postal code is too short"),
-  country: z.string().trim().min(2, "Country is too short"),
-});
 
 function isOrderStatus(value: string): value is (typeof ORDER_STATUSES)[number] {
   return ORDER_STATUSES.includes(value as (typeof ORDER_STATUSES)[number]);
@@ -43,20 +32,13 @@ function serializeOrder(order: {
   shippingCountry: string | null;
   createdAt: Date;
   updatedAt: Date;
-  customer: {
-    fullName: string;
-    email: string;
-    phone: string | null;
-  };
+  customer: { fullName: string; email: string; phone: string | null };
   items: Array<{
     id: string;
     quantity: number;
     unitPriceCents: number;
     lineTotalCents: number;
-    product: {
-      name: string;
-      slug: string;
-    };
+    product: { name: string; slug: string };
   }>;
 }) {
   return {
@@ -108,51 +90,17 @@ export async function GET(request: NextRequest) {
       if (!isOrderStatus(statusParam)) {
         return Response.json({ error: "Invalid order status filter." }, { status: 400 });
       }
-
       filters.push({ status: statusParam });
     }
 
     if (query) {
       filters.push({
         OR: [
-          {
-            orderNumber: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            customer: {
-              is: {
-                fullName: {
-                  contains: query,
-                  mode: "insensitive",
-                },
-              },
-            },
-          },
-          {
-            customer: {
-              is: {
-                email: {
-                  contains: query,
-                  mode: "insensitive",
-                },
-              },
-            },
-          },
-          {
-            shippingCity: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            shippingPostalCode: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
+          { orderNumber: { contains: query, mode: "insensitive" } },
+          { customer: { is: { fullName: { contains: query, mode: "insensitive" } } } },
+          { customer: { is: { email: { contains: query, mode: "insensitive" } } } },
+          { shippingCity: { contains: query, mode: "insensitive" } },
+          { shippingPostalCode: { contains: query, mode: "insensitive" } },
         ],
       });
     }
@@ -163,17 +111,8 @@ export async function GET(request: NextRequest) {
       prisma.order.count({ where }),
       prisma.order.findMany({
         where,
-        include: {
-          customer: true,
-          items: {
-            include: {
-              product: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+        include: { customer: true, items: { include: { product: true } } },
+        orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -191,57 +130,73 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("GET /api/orders failed", error);
-
-    return Response.json(
-      { error: "Something went wrong while loading orders." },
-      { status: 500 }
-    );
+    return Response.json({ error: "Something went wrong while loading orders." }, { status: 500 });
   }
 }
+
+// ── POST ─────────────────────────────────────────────────────────────────
+
+const itemSchema = z.object({
+  productId: z.string().trim().min(1),
+  productName: z.string().trim().min(1),
+  quantity: z.coerce.number().int().min(1),
+  unitPrice: z.number(),
+  totalPrice: z.number(),
+  side: z.string().nullable().optional(),
+  sauces: z.array(z.string()).optional(),
+  drink: z.string().nullable().optional(),
+});
+
+const createOrderSchema = z.object({
+  items: z.array(itemSchema).min(1, "Cart is empty"),
+  customer: z.object({
+    fullName: z.string().trim().min(1, "Full name is required"),
+    phone: z.string().trim().min(1, "Phone is required"),
+    address: z.string().trim().min(1, "Address is required"),
+    note: z.string().optional(),
+  }),
+  subtotal: z.number(),
+});
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const data = createOrderSchema.parse(body);
 
-    const product = await prisma.product.findUnique({
-      where: { slug: data.productSlug },
+    // Derive a stable guest email from phone number
+    const digits = data.customer.phone.replace(/\D/g, "");
+    const guestEmail = `${digits}@guest.biteva.com`;
+
+    const totalAmountCents = Math.round(data.subtotal * 100);
+
+    // Upsert customer
+    const customer = await prisma.customer.upsert({
+      where: { email: guestEmail },
+      update: { fullName: data.customer.fullName, phone: data.customer.phone },
+      create: { fullName: data.customer.fullName, email: guestEmail, phone: data.customer.phone },
     });
 
-    if (!product || !product.active) {
-      return Response.json(
-        { error: "Product not found or inactive." },
-        { status: 404 }
-      );
+    // Upsert each product by slug (productId doubles as slug)
+    const dbProductIds: Record<string, string> = {};
+    for (const item of data.items) {
+      const product = await prisma.product.upsert({
+        where: { slug: item.productId },
+        update: { name: item.productName },
+        create: {
+          name: item.productName,
+          slug: item.productId,
+          priceCents: Math.round(item.unitPrice * 100),
+          active: true,
+        },
+      });
+      dbProductIds[item.productId] = product.id;
     }
 
-    const totalAmountCents = product.priceCents * data.quantity;
-
-    const customer = await prisma.customer.upsert({
-      where: { email: data.email },
-      update: {
-        fullName: data.fullName,
-        phone: data.phone || null,
-      },
-      create: {
-        fullName: data.fullName,
-        email: data.email,
-        phone: data.phone || null,
-      },
-    });
-
+    // Generate a unique order number
     let orderNumber = makeOrderNumber();
-
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const existing = await prisma.order.findUnique({
-        where: { orderNumber },
-        select: { id: true },
-      });
-
-      if (!existing) {
-        break;
-      }
-
+      const existing = await prisma.order.findUnique({ where: { orderNumber }, select: { id: true } });
+      if (!existing) break;
       orderNumber = makeOrderNumber();
     }
 
@@ -252,58 +207,32 @@ export async function POST(request: Request) {
         currency: "EUR",
         totalAmountCents,
         customerId: customer.id,
-        shippingFullName: data.fullName,
-        shippingEmail: data.email,
-        shippingPhone: data.phone || null,
-        shippingAddressLine1: data.addressLine1,
-        shippingAddressLine2: data.addressLine2 || null,
-        shippingCity: data.city,
-        shippingPostalCode: data.postalCode,
-        shippingCountry: data.country,
+        shippingFullName: data.customer.fullName,
+        shippingPhone: data.customer.phone,
+        shippingAddressLine1: data.customer.address,
         items: {
-          create: [
-            {
-              productId: product.id,
-              quantity: data.quantity,
-              unitPriceCents: product.priceCents,
-              lineTotalCents: totalAmountCents,
-            },
-          ],
+          create: data.items.map((item) => ({
+            productId: dbProductIds[item.productId],
+            quantity: item.quantity,
+            unitPriceCents: Math.round(item.unitPrice * 100),
+            lineTotalCents: Math.round(item.totalPrice * 100),
+          })),
         },
       },
-      include: {
-        customer: true,
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      select: { orderNumber: true },
     });
 
-    return Response.json(
-      {
-        ok: true,
-        order: serializeOrder(order),
-      },
-      { status: 201 }
-    );
+    return Response.json({ ok: true, orderNumber: order.orderNumber }, { status: 201 });
   } catch (error) {
     console.error("POST /api/orders failed", error);
 
     if (error instanceof z.ZodError) {
       return Response.json(
-        {
-          error: "Validation failed",
-          details: error.flatten(),
-        },
+        { error: error.issues[0]?.message ?? "Validation failed" },
         { status: 400 }
       );
     }
 
-    return Response.json(
-      { error: "Something went wrong while creating the order." },
-      { status: 500 }
-    );
+    return Response.json({ error: "Could not create your order." }, { status: 500 });
   }
 }
