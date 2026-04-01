@@ -349,7 +349,17 @@ export default function OrderPage() {
   function dec(setFn: React.Dispatch<React.SetStateAction<QtyMap>>, id: string) {
     setFn(q => ({ ...q, [id]: Math.max(0, (q[id] ?? 0) - 1) }));
   }
-
+  function selectPickle(id: string) {
+    setPicklesQm(prev => {
+      const wasSelected = (prev[id] ?? 0) > 0;
+      const next: QtyMap = {};
+      pickles.forEach(p => { next[p.id] = 0; });
+      if (!wasSelected) next[id] = 1;
+      return next;
+    });
+  }
+  
+  
   function addToCart() {
     if (!activeProduct) return;
 
@@ -391,12 +401,41 @@ export default function OrderPage() {
             onInc={()=>inc(setSaucesQm, item.id)} onDec={()=>dec(setSaucesQm, item.id)}
             freeRemaining={saucesFreeLeft} stepFreeAllowance={FREE_SAUCES} />
         ));
+
       case "pickles":
-        return pickles.map(item => (
-          <ItemRow key={item.id} item={item} qty={picklesQm[item.id]??0}
-            onInc={()=>inc(setPicklesQm, item.id)} onDec={()=>dec(setPicklesQm, item.id)}
-            freeRemaining={picklesFreeLeft} stepFreeAllowance={FREE_PICKLES} />
-        ));
+        return pickles.map(item => {
+          const selected = (picklesQm[item.id] ?? 0) > 0;
+          return (
+            <div key={item.id} onClick={() => selectPickle(item.id)} style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              padding:"14px 16px", borderRadius:"16px", cursor:"pointer",
+              border: selected ? "1px solid rgba(217,158,79,0.4)" : "1px solid rgba(255,255,255,0.07)",
+              background: selected ? "rgba(217,158,79,0.07)" : "rgba(255,255,255,0.02)",
+              transition:"all 0.2s ease", gap:"12px",
+            }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ margin:0, fontSize:"15px", fontWeight:500, color: selected ? "#fff" : "#9a9290" }}>
+                  {item.name}
+                </p>
+                <p style={{ margin:"3px 0 0", fontSize:"12px" }}>
+                  {item.price === 0
+                    ? <span style={{ color:"#5a7a3a", fontWeight:600 }}>Free</span>
+                    : <span style={{ color: selected ? "#D99E4F" : "#444" }}>+{formatMoney(item.price)}</span>
+                  }
+                </p>
+              </div>
+              <div style={{
+                width:"22px", height:"22px", borderRadius:"50%", flexShrink:0,
+                border: selected ? "2px solid #D99E4F" : "2px solid rgba(255,255,255,0.15)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                transition:"border-color 0.2s",
+              }}>
+                {selected && <div style={{ width:"10px", height:"10px", borderRadius:"50%", background:"#D99E4F" }}/>}
+              </div>
+            </div>
+          );
+        });
+        
       case "drinks":
         return drinks.map(item => (
           <ItemRow key={item.id} item={item} qty={drinksQm[item.id]??0}

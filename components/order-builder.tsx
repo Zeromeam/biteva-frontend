@@ -58,7 +58,6 @@ const products: MenuProduct[] = [
 ];
 
 const sideOptions: MenuOption[] = [
-  { id: "no-side", name: "No Side", price: 0 },
   { id: "fries", name: "Fries", price: 2.2 },
   { id: "rice", name: "Rice", price: 2.0 },
   { id: "salad", name: "Salad", price: 2.3 },
@@ -66,7 +65,6 @@ const sideOptions: MenuOption[] = [
 ];
 
 const sauceOptions: MenuOption[] = [
-  { id: "no-sauce", name: "No Sauce", price: 0 },
   { id: "garlic", name: "Garlic Sauce", price: 0.8 },
   { id: "spicy", name: "Spicy Sauce", price: 0.8 },
   { id: "bbq", name: "BBQ Sauce", price: 0.8 },
@@ -74,7 +72,6 @@ const sauceOptions: MenuOption[] = [
 ];
 
 const drinkOptions: MenuOption[] = [
-  { id: "no-drink", name: "No Drink", price: 0 },
   { id: "cola", name: "Cola", price: 2.0 },
   { id: "cola-zero", name: "Cola Zero", price: 2.0 },
   { id: "sprite", name: "Sprite", price: 2.0 },
