@@ -118,27 +118,39 @@ export async function PATCH(
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
-      select: { id: true },
+      select: {
+        id: true,
+        status: true,
+        items: { select: { quantity: true, product: { select: { slug: true } } } },
+      },
     });
 
     if (!existingOrder) {
       return Response.json({ error: "Order not found." }, { status: 404 });
     }
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: {
-        status: data.status,
-      },
-      include: {
-        customer: true,
-        items: {
-          include: {
-            product: true,
-          },
+    const becomingCancelled =
+      data.status === "CANCELLED" && existingOrder.status !== "CANCELLED";
+
+    const [order] = await prisma.$transaction([
+      prisma.order.update({
+        where: { id },
+        data: { status: data.status },
+        include: {
+          customer: true,
+          items: { include: { product: true } },
         },
-      },
-    });
+      }),
+      // Restore stock when an order is cancelled
+      ...(becomingCancelled
+        ? existingOrder.items.map((item) =>
+            prisma.product.update({
+              where: { slug: item.product.slug },
+              data: { stockCount: { increment: item.quantity } },
+            })
+          )
+        : []),
+    ]);
 
     return Response.json({ ok: true, order: serializeOrder(order) });
   } catch (error) {
