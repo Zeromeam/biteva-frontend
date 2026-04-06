@@ -116,6 +116,7 @@ export const OrderScalarFieldEnum = {
   shippingCity: 'shippingCity',
   shippingPostalCode: 'shippingPostalCode',
   shippingCountry: 'shippingCountry',
+  stripePaymentIntentId: 'stripePaymentIntentId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

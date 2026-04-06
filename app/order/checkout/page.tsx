@@ -16,6 +16,16 @@ import {
   subscribeToCartUpdates,
   updateCartItemQuantity,
 } from "@/lib/order-cart";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  ExpressCheckoutElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
+import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const BagIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -25,54 +35,86 @@ const BagIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
-export default function CheckoutPage() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [details, setDetails] = useState<CustomerDetails>(initialCustomerDetails);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+// ── Express Checkout inner component (must be inside <Elements>) ──────────────
 
-  useEffect(() => {
-    const syncCart = () => setCart(loadCart());
-    syncCart();
-    return subscribeToCartUpdates(syncCart);
-  }, []);
+interface ExpressCheckoutProps {
+  cart: CartItem[];
+  details: CustomerDetails;
+  subtotalCents: number;
+  onValidationError: (msg: string) => void;
+  onSuccess: (orderNumber: string) => void;
+  onError: (msg: string) => void;
+}
 
-  const itemCount = useMemo(() => getCartCount(cart), [cart]);
-  const subtotal = useMemo(() => getCartSubtotal(cart), [cart]);
+function ExpressCheckout({ cart, details, subtotalCents, onValidationError, onSuccess, onError }: ExpressCheckoutProps) {
+  const stripe = useStripe();
+  const elements = useElements();
 
-  const updateDetails = (field: keyof CustomerDetails, value: string) => {
-    setDetails((current) => ({ ...current, [field]: value }));
-  };
+  const handleConfirm = async (event: StripeExpressCheckoutElementConfirmEvent) => {
+    if (!stripe || !elements) return;
 
-  const changeQuantity = (cartId: string, quantity: number) => {
-    updateCartItemQuantity(cartId, quantity);
-    setCart(loadCart());
-  };
-
-  const removeItem = (cartId: string) => {
-    removeCartItem(cartId);
-    setCart(loadCart());
-  };
-
-  const handleBuyNow = async () => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
+    // Validate form fields before proceeding
     if (cart.length === 0) {
-      setErrorMessage("Your cart is empty.");
+      event.paymentFailed({ reason: "fail" });
+      onValidationError("Your cart is empty.");
       return;
     }
 
     if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim()) {
-      setErrorMessage("Please fill your name, phone, and address.");
+      event.paymentFailed({ reason: "fail" });
+      onValidationError("Please fill your name, phone, and address.");
       return;
     }
 
-    setIsSubmitting(true);
-
+    // Create PaymentIntent on server
+    let clientSecret: string;
     try {
-      const response = await fetch("/api/orders", {
+      const res = await fetch("/api/payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountCents: subtotalCents, currency: "eur" }),
+      });
+      const piData = await res.json() as { clientSecret?: string; error?: string };
+      if (!res.ok || !piData.clientSecret) {
+        event.paymentFailed({ reason: "fail" });
+        onError(piData.error ?? "Could not start payment.");
+        return;
+      }
+      clientSecret = piData.clientSecret;
+    } catch {
+      event.paymentFailed({ reason: "fail" });
+      onError("Could not reach the server.");
+      return;
+    }
+
+    // Confirm the payment (Apple Pay / Google Pay sheet)
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      confirmParams: {
+        payment_method_data: {
+          billing_details: {
+            name: details.fullName,
+            phone: details.phone,
+          },
+        },
+      },
+      redirect: "if_required",
+    });
+
+    if (error) {
+      onError(error.message ?? "Payment failed.");
+      return;
+    }
+
+    if (paymentIntent?.status !== "succeeded") {
+      onError("Payment was not completed.");
+      return;
+    }
+
+    // Payment succeeded — create the order
+    try {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -87,26 +129,66 @@ export default function CheckoutPage() {
             totalPrice: getItemUnitPrice(item) * item.quantity,
           })),
           customer: details,
-          subtotal,
+          subtotal: subtotalCents / 100,
+          stripePaymentIntentId: paymentIntent.id,
         }),
       });
 
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const orderData = await res.json() as { orderNumber?: string; error?: string };
 
-      if (!response.ok) {
-        setErrorMessage(data?.error ?? "Could not create your order.");
+      if (!res.ok) {
+        onError(orderData.error ?? "Payment succeeded but order could not be saved. Please contact support.");
         return;
       }
 
       clearCart();
-      setCart([]);
-      setDetails(initialCustomerDetails);
-      setSuccessMessage("Order sent successfully.");
+      onSuccess(orderData.orderNumber ?? "");
     } catch {
-      setErrorMessage("Could not send the order right now.");
-    } finally {
-      setIsSubmitting(false);
+      onError("Payment succeeded but order could not be saved. Please contact support.");
     }
+  };
+
+  return (
+    <ExpressCheckoutElement
+      onConfirm={handleConfirm}
+      options={{
+        buttonType: { applePay: "buy", googlePay: "buy" },
+        layout: { maxColumns: 1, maxRows: 3, overflow: "auto" },
+      }}
+    />
+  );
+}
+
+// ── Main checkout page ────────────────────────────────────────────────────────
+
+export default function CheckoutPage() {
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [details, setDetails] = useState<CustomerDetails>(initialCustomerDetails);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncCart = () => setCart(loadCart());
+    syncCart();
+    return subscribeToCartUpdates(syncCart);
+  }, []);
+
+  const itemCount = useMemo(() => getCartCount(cart), [cart]);
+  const subtotal = useMemo(() => getCartSubtotal(cart), [cart]);
+  const subtotalCents = useMemo(() => Math.round(subtotal * 100), [subtotal]);
+
+  const updateDetails = (field: keyof CustomerDetails, value: string) => {
+    setDetails((current) => ({ ...current, [field]: value }));
+  };
+
+  const changeQuantity = (cartId: string, quantity: number) => {
+    updateCartItemQuantity(cartId, quantity);
+    setCart(loadCart());
+  };
+
+  const removeItem = (cartId: string) => {
+    removeCartItem(cartId);
+    setCart(loadCart());
   };
 
   return (
@@ -338,40 +420,67 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Order total */}
+            {/* Order total + payment */}
             <div style={{ borderRadius: "22px", border: "1px solid rgba(255,255,255,0.07)", background: "#0c0c0c", padding: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", color: "#5a5550", marginBottom: "12px" }}>
                 <span>Items</span>
                 <span>{itemCount}</span>
               </div>
               <div style={{ height: "1px", background: "rgba(255,255,255,0.05)", marginBottom: "14px" }} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
                 <span style={{ fontSize: "15px", fontWeight: 500, color: "#9a9290" }}>Total</span>
                 <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "26px", fontWeight: 600, color: "#D99E4F" }}>{formatMoney(subtotal)}</span>
               </div>
 
               {errorMessage && (
-                <div style={{ marginTop: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,80,80,0.2)", background: "rgba(255,80,80,0.06)", fontSize: "13px", color: "#ff9090", lineHeight: 1.5 }}>
+                <div style={{ marginBottom: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,80,80,0.2)", background: "rgba(255,80,80,0.06)", fontSize: "13px", color: "#ff9090", lineHeight: 1.5 }}>
                   {errorMessage}
                 </div>
               )}
 
               {successMessage && (
-                <div style={{ marginTop: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(90,170,90,0.25)", background: "rgba(90,170,90,0.08)", fontSize: "13px", color: "#90d090", lineHeight: 1.5 }}>
+                <div style={{ marginBottom: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(90,170,90,0.25)", background: "rgba(90,170,90,0.08)", fontSize: "13px", color: "#90d090", lineHeight: 1.5 }}>
                   {successMessage}
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                disabled={isSubmitting}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: "18px", padding: "15px 24px", borderRadius: "14px", border: "1px solid rgba(217,158,79,0.35)", background: isSubmitting ? "rgba(217,158,79,0.07)" : "#D99E4F", color: isSubmitting ? "#D99E4F" : "#000", fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.7 : 1, transition: "all 0.2s" }}
-                onMouseEnter={(e) => { if (!isSubmitting) { const el = e.currentTarget; el.style.background = "#e8b060"; } }}
-                onMouseLeave={(e) => { if (!isSubmitting) { const el = e.currentTarget; el.style.background = "#D99E4F"; } }}
-              >
-                {isSubmitting ? "Sending…" : "Place order"}
-              </button>
+              {/* Stripe Express Checkout (Apple Pay / Google Pay) */}
+              {subtotalCents > 0 && (
+                <Elements
+                  stripe={stripePromise}
+                  options={{
+                    mode: "payment",
+                    amount: subtotalCents,
+                    currency: "eur",
+                    appearance: {
+                      theme: "night",
+                      variables: {
+                        colorBackground: "#0c0c0c",
+                        colorText: "#e2ddd6",
+                        borderRadius: "14px",
+                      },
+                    },
+                  }}
+                >
+                  <ExpressCheckout
+                    cart={cart}
+                    details={details}
+                    subtotalCents={subtotalCents}
+                    onValidationError={(msg) => setErrorMessage(msg)}
+                    onSuccess={(orderNumber) => {
+                      setCart([]);
+                      setSuccessMessage(`Order ${orderNumber} placed successfully.`);
+                    }}
+                    onError={(msg) => setErrorMessage(msg)}
+                  />
+                </Elements>
+              )}
+
+              {cart.length === 0 && (
+                <p style={{ fontSize: "13px", color: "#5a5550", textAlign: "center", margin: 0 }}>
+                  Add items to your cart to proceed.
+                </p>
+              )}
             </div>
           </aside>
         </div>
