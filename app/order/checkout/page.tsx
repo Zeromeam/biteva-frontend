@@ -138,6 +138,7 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
                 city: details.city,
                 postal_code: details.postalCode,
                 country: details.country || "AT",
+                state: "",
               },
             },
           },
