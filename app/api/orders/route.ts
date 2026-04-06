@@ -156,6 +156,7 @@ const createOrderSchema = z.object({
     note: z.string().optional(),
   }),
   subtotal: z.number(),
+  stripePaymentIntentId: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -231,6 +232,7 @@ export async function POST(request: Request) {
           shippingFullName: data.customer.fullName,
           shippingPhone: data.customer.phone,
           shippingAddressLine1: data.customer.address,
+          stripePaymentIntentId: data.stripePaymentIntentId ?? null,
           items: {
             create: data.items.map((item) => ({
               productId: dbProductIds[item.productId],
