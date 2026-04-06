@@ -163,6 +163,25 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = createOrderSchema.parse(body);
 
+    // ── Stock check ───────────────────────────────────────────────────────
+    const slugs = data.items.map((i) => i.productId);
+    const stockRows = await prisma.product.findMany({
+      where: { slug: { in: slugs } },
+      select: { slug: true, stockCount: true },
+    });
+    const stockMap = new Map(stockRows.map((p) => [p.slug, p.stockCount]));
+
+    for (const item of data.items) {
+      const available = stockMap.get(item.productId) ?? 0;
+      if (item.quantity > available) {
+        return Response.json(
+          { error: `Not enough stock for "${item.productName}". Only ${available} left.` },
+          { status: 409 }
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     // Derive a stable guest email from phone number
     const digits = data.customer.phone.replace(/\D/g, "");
     const guestEmail = `${digits}@guest.biteva.com`;
@@ -200,27 +219,37 @@ export async function POST(request: Request) {
       orderNumber = makeOrderNumber();
     }
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        status: "PENDING",
-        currency: "EUR",
-        totalAmountCents,
-        customerId: customer.id,
-        shippingFullName: data.customer.fullName,
-        shippingPhone: data.customer.phone,
-        shippingAddressLine1: data.customer.address,
-        items: {
-          create: data.items.map((item) => ({
-            productId: dbProductIds[item.productId],
-            quantity: item.quantity,
-            unitPriceCents: Math.round(item.unitPrice * 100),
-            lineTotalCents: Math.round(item.totalPrice * 100),
-          })),
+    // ── Create order + decrement stock atomically ─────────────────────────
+    const [order] = await prisma.$transaction([
+      prisma.order.create({
+        data: {
+          orderNumber,
+          status: "PENDING",
+          currency: "EUR",
+          totalAmountCents,
+          customerId: customer.id,
+          shippingFullName: data.customer.fullName,
+          shippingPhone: data.customer.phone,
+          shippingAddressLine1: data.customer.address,
+          items: {
+            create: data.items.map((item) => ({
+              productId: dbProductIds[item.productId],
+              quantity: item.quantity,
+              unitPriceCents: Math.round(item.unitPrice * 100),
+              lineTotalCents: Math.round(item.totalPrice * 100),
+            })),
+          },
         },
-      },
-      select: { orderNumber: true },
-    });
+        select: { orderNumber: true },
+      }),
+      ...data.items.map((item) =>
+        prisma.product.update({
+          where: { slug: item.productId },
+          data: { stockCount: { decrement: item.quantity } },
+        })
+      ),
+    ]);
+    // ─────────────────────────────────────────────────────────────────────
 
     return Response.json({ ok: true, orderNumber: order.orderNumber }, { status: 201 });
   } catch (error) {

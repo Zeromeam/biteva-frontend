@@ -2,6 +2,124 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+// ── Inventory ────────────────────────────────────────────────────────────
+
+type ProductStock = {
+  slug: string;
+  name: string;
+  stockCount: number;
+  lowStockThreshold: number;
+};
+
+function InventoryRow({ product, onSaved }: { product: ProductStock; onSaved: (updated: ProductStock) => void }) {
+  const [stock, setStock] = useState(String(product.stockCount));
+  const [threshold, setThreshold] = useState(String(product.lowStockThreshold));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/products/${product.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stockCount: Number(stock),
+          lowStockThreshold: Number(threshold),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Failed to save.");
+      onSaved({ ...product, stockCount: data.product.stockCount, lowStockThreshold: data.product.lowStockThreshold });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isLow = product.stockCount <= product.lowStockThreshold && product.stockCount > 0;
+  const isOut = product.stockCount === 0;
+
+  return (
+    <div className="admin-item-row" style={{ alignItems: "center", gap: "12px" }}>
+      <div style={{ flex: 1 }}>
+        <strong>{product.name}</strong>
+        {isOut && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#c0392b", fontWeight: 700 }}>OUT OF STOCK</span>}
+        {isLow && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#c47a1a", fontWeight: 700 }}>LOW</span>}
+        {error && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#c0392b" }}>{error}</p>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <label style={{ fontSize: "12px", color: "#888" }}>Stock</label>
+        <input
+          type="number" min={0} value={stock}
+          onChange={(e) => setStock(e.target.value)}
+          style={{ width: "70px", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.12)", background: "#111", color: "#fff", fontSize: "14px" }}
+        />
+        <label style={{ fontSize: "12px", color: "#888" }}>Alert at</label>
+        <input
+          type="number" min={0} value={threshold}
+          onChange={(e) => setThreshold(e.target.value)}
+          style={{ width: "70px", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.12)", background: "#111", color: "#fff", fontSize: "14px" }}
+        />
+        <button
+          type="button"
+          className="submit-button admin-search-button"
+          onClick={save}
+          disabled={saving}
+          style={{ minWidth: "60px" }}
+        >
+          {saving ? "…" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InventoryPanel() {
+  const [productList, setProductList] = useState<ProductStock[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then(({ products }) => setProductList(products))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const lowStockItems = productList.filter(
+    (p) => p.stockCount <= p.lowStockThreshold
+  );
+
+  function handleSaved(updated: ProductStock) {
+    setProductList((list) => list.map((p) => (p.slug === updated.slug ? updated : p)));
+  }
+
+  return (
+    <section className="admin-toolbar-card" style={{ marginTop: "16px" }}>
+      <h2 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 600 }}>Inventory</h2>
+
+      {lowStockItems.length > 0 && (
+        <div style={{ marginBottom: "16px", padding: "12px 16px", borderRadius: "10px", background: "rgba(196,122,26,0.12)", border: "1px solid rgba(196,122,26,0.4)", fontSize: "13px", color: "#c47a1a" }}>
+          <strong>Low stock alert: </strong>
+          {lowStockItems.map((p) => `${p.name} (${p.stockCount} left)`).join(", ")}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="admin-empty-state">Loading inventory…</p>
+      ) : (
+        <div className="admin-items-list">
+          {productList.map((p) => (
+            <InventoryRow key={p.slug} product={p} onSaved={handleSaved} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 type OrderStatus = "PENDING" | "PAID" | "CANCELLED";
 
 type OrderSummary = {
@@ -274,6 +392,8 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       </section>
+
+      <InventoryPanel />
 
       <section className="admin-toolbar-card">
         <form className="admin-toolbar" onSubmit={handleSearchSubmit}>
