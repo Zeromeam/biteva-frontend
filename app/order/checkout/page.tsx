@@ -128,6 +128,12 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
         clientSecret,
         confirmParams: {
           return_url: `${window.location.origin}/order/checkout`,
+          payment_method_data: {
+            billing_details: {
+              name: details.fullName,
+              phone: details.phone,
+            },
+          },
         },
         redirect: "if_required",
       });
