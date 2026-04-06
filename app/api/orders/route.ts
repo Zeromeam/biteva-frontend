@@ -225,7 +225,7 @@ export async function POST(request: Request) {
       prisma.order.create({
         data: {
           orderNumber,
-          status: "PENDING",
+          status: data.stripePaymentIntentId ? "PAID" : "PENDING",
           currency: "EUR",
           totalAmountCents,
           customerId: customer.id,
