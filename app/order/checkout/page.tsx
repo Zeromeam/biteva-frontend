@@ -20,6 +20,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
   ExpressCheckoutElement,
+  PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -35,9 +36,9 @@ const BagIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
-// ── Express Checkout inner component (must be inside <Elements>) ──────────────
+// ── Payment section (must be inside <Elements>) ───────────────────────────────
 
-interface ExpressCheckoutProps {
+interface PaymentSectionProps {
   cart: CartItem[];
   details: CustomerDetails;
   subtotalCents: number;
@@ -46,117 +47,182 @@ interface ExpressCheckoutProps {
   onError: (msg: string) => void;
 }
 
-function ExpressCheckout({ cart, details, subtotalCents, onValidationError, onSuccess, onError }: ExpressCheckoutProps) {
+/** Shared helper — creates an order after a successful Stripe PaymentIntent */
+async function createOrder(
+  cart: CartItem[],
+  details: CustomerDetails,
+  subtotalCents: number,
+  paymentIntentId: string,
+): Promise<{ ok: true; orderNumber: string } | { ok: false; error: string }> {
+  try {
+    const res = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: cart.map((item) => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          side: item.side?.name ?? null,
+          sauces: item.sauces.map((s) => s.name),
+          drink: item.drink?.name ?? null,
+          unitPrice: getItemUnitPrice(item),
+          totalPrice: getItemUnitPrice(item) * item.quantity,
+        })),
+        customer: details,
+        subtotal: subtotalCents / 100,
+        stripePaymentIntentId: paymentIntentId,
+      }),
+    });
+    const data = await res.json() as { orderNumber?: string; error?: string };
+    if (!res.ok) return { ok: false, error: data.error ?? "Order could not be saved. Please contact support." };
+    return { ok: true, orderNumber: data.orderNumber ?? "" };
+  } catch {
+    return { ok: false, error: "Order could not be saved. Please contact support." };
+  }
+}
+
+/** Shared helper — creates a PaymentIntent on the server and returns the clientSecret */
+async function fetchClientSecret(amountCents: number): Promise<string | null> {
+  try {
+    const res = await fetch("/api/payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amountCents, currency: "eur" }),
+    });
+    const data = await res.json() as { clientSecret?: string };
+    return data.clientSecret ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuccess, onError }: PaymentSectionProps) {
   const stripe = useStripe();
   const elements = useElements();
+  const [isCardPaying, setIsCardPaying] = useState(false);
 
-  const handleConfirm = async (event: StripeExpressCheckoutElementConfirmEvent) => {
-    if (!stripe || !elements) return;
-
-    // Validate form fields before proceeding
-    if (cart.length === 0) {
-      event.paymentFailed({ reason: "fail" });
-      onValidationError("Your cart is empty.");
-      return;
-    }
-
+  const validate = (): boolean => {
+    if (cart.length === 0) { onValidationError("Your cart is empty."); return false; }
     if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim()) {
-      event.paymentFailed({ reason: "fail" });
       onValidationError("Please fill your name, phone, and address.");
-      return;
+      return false;
     }
+    return true;
+  };
 
-    // Create PaymentIntent on server
-    let clientSecret: string;
-    try {
-      const res = await fetch("/api/payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountCents: subtotalCents, currency: "eur" }),
-      });
-      const piData = await res.json() as { clientSecret?: string; error?: string };
-      if (!res.ok || !piData.clientSecret) {
-        event.paymentFailed({ reason: "fail" });
-        onError(piData.error ?? "Could not start payment.");
-        return;
-      }
-      clientSecret = piData.clientSecret;
-    } catch {
-      event.paymentFailed({ reason: "fail" });
-      onError("Could not reach the server.");
-      return;
-    }
+  // ── Apple Pay / Google Pay ───────────────────────────────────────────────
+  const handleExpressConfirm = async (event: StripeExpressCheckoutElementConfirmEvent) => {
+    if (!stripe || !elements) return;
+    if (!validate()) { event.paymentFailed({ reason: "fail" }); return; }
 
-    // Confirm the payment (Apple Pay / Google Pay sheet)
+    const clientSecret = await fetchClientSecret(subtotalCents);
+    if (!clientSecret) { event.paymentFailed({ reason: "fail" }); onError("Could not start payment."); return; }
+
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       clientSecret,
       confirmParams: {
         return_url: `${window.location.origin}/order/checkout`,
-        payment_method_data: {
-          billing_details: {
-            name: details.fullName,
-            phone: details.phone,
-          },
-        },
+        payment_method_data: { billing_details: { name: details.fullName, phone: details.phone } },
       },
       redirect: "if_required",
     });
 
-    if (error) {
-      onError(error.message ?? "Payment failed.");
-      return;
-    }
+    if (error) { onError(error.message ?? "Payment failed."); return; }
+    if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
 
-    if (paymentIntent?.status !== "succeeded") {
-      onError("Payment was not completed.");
-      return;
-    }
+    const result = await createOrder(cart, details, subtotalCents, paymentIntent.id);
+    if (!result.ok) { onError(result.error); return; }
+    clearCart();
+    onSuccess(result.orderNumber);
+  };
 
-    // Payment succeeded — create the order
+  // ── Card form ────────────────────────────────────────────────────────────
+  const handleCardPay = async () => {
+    if (!stripe || !elements || isCardPaying) return;
+    if (!validate()) return;
+
+    setIsCardPaying(true);
     try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.map((item) => ({
-            productId: item.product.id,
-            productName: item.product.name,
-            quantity: item.quantity,
-            side: item.side?.name ?? null,
-            sauces: item.sauces.map((sauce) => sauce.name),
-            drink: item.drink?.name ?? null,
-            unitPrice: getItemUnitPrice(item),
-            totalPrice: getItemUnitPrice(item) * item.quantity,
-          })),
-          customer: details,
-          subtotal: subtotalCents / 100,
-          stripePaymentIntentId: paymentIntent.id,
-        }),
+      // Validate the card fields
+      const { error: submitError } = await elements.submit();
+      if (submitError) { onError(submitError.message ?? "Please check your card details."); return; }
+
+      // Create PaymentIntent
+      const clientSecret = await fetchClientSecret(subtotalCents);
+      if (!clientSecret) { onError("Could not start payment."); return; }
+
+      // Confirm card payment
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/order/checkout`,
+          payment_method_data: { billing_details: { name: details.fullName, phone: details.phone } },
+        },
+        redirect: "if_required",
       });
 
-      const orderData = await res.json() as { orderNumber?: string; error?: string };
+      if (error) { onError(error.message ?? "Payment failed."); return; }
+      if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
 
-      if (!res.ok) {
-        onError(orderData.error ?? "Payment succeeded but order could not be saved. Please contact support.");
-        return;
-      }
-
+      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id);
+      if (!result.ok) { onError(result.error); return; }
       clearCart();
-      onSuccess(orderData.orderNumber ?? "");
-    } catch {
-      onError("Payment succeeded but order could not be saved. Please contact support.");
+      onSuccess(result.orderNumber);
+    } finally {
+      setIsCardPaying(false);
     }
   };
 
   return (
-    <ExpressCheckoutElement
-      onConfirm={handleConfirm}
-      options={{
-        buttonType: { applePay: "buy", googlePay: "buy" },
-        layout: { maxColumns: 1, maxRows: 3, overflow: "auto" },
-      }}
-    />
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* Apple Pay / Google Pay — only renders if supported by browser */}
+      <ExpressCheckoutElement
+        onConfirm={handleExpressConfirm}
+        options={{
+          buttonType: { applePay: "buy", googlePay: "buy" },
+          layout: { maxColumns: 1, maxRows: 3, overflow: "auto" },
+        }}
+      />
+
+      {/* Divider */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.07)" }} />
+        <span style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#3a3a3a" }}>or pay with card</span>
+        <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.07)" }} />
+      </div>
+
+      {/* Card form */}
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          fields: { billingDetails: { name: "never", phone: "never" } },
+        }}
+      />
+
+      {/* Pay button */}
+      <button
+        type="button"
+        onClick={handleCardPay}
+        disabled={isCardPaying || !stripe}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: "100%", padding: "15px 24px", borderRadius: "14px",
+          border: "1px solid rgba(217,158,79,0.35)",
+          background: isCardPaying ? "rgba(217,158,79,0.07)" : "#D99E4F",
+          color: isCardPaying ? "#D99E4F" : "#000",
+          fontFamily: "'DM Sans', system-ui, sans-serif",
+          fontSize: "14px", fontWeight: 600,
+          cursor: isCardPaying ? "not-allowed" : "pointer",
+          opacity: isCardPaying ? 0.7 : 1,
+          transition: "all 0.2s",
+        }}
+      >
+        {isCardPaying ? "Processing…" : `Pay ${new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" }).format(subtotalCents / 100)}`}
+      </button>
+    </div>
   );
 }
 
@@ -445,7 +511,7 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Stripe Express Checkout (Apple Pay / Google Pay) */}
+              {/* Stripe payment (Apple Pay / Google Pay + card form) */}
               {subtotalCents > 0 && (
                 <Elements
                   stripe={stripePromise}
@@ -463,7 +529,7 @@ export default function CheckoutPage() {
                     },
                   }}
                 >
-                  <ExpressCheckout
+                  <PaymentSection
                     cart={cart}
                     details={details}
                     subtotalCents={subtotalCents}
