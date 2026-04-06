@@ -132,11 +132,6 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
             billing_details: {
               name: details.fullName,
               phone: details.phone,
-              email: `${details.phone.replace(/\D/g, "")}@guest.biteva.com`,
-              address: {
-                line1: details.address,
-                country: "AT",
-              },
             },
           },
         },
@@ -162,9 +157,7 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
           fields: {
             billingDetails: {
               name: "never",
-              email: "never",
               phone: "never",
-              address: "never",
             },
           },
         }}
