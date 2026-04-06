@@ -545,6 +545,7 @@ export default function CheckoutPage() {
                     mode: "payment",
                     amount: subtotalCents,
                     currency: "eur",
+                    payment_method_types: ["card"],
                     appearance: {
                       theme: "night",
                       variables: {
