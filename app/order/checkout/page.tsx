@@ -132,6 +132,13 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
             billing_details: {
               name: details.fullName,
               phone: details.phone,
+              email: details.email || undefined,
+              address: {
+                line1: details.address,
+                city: details.city,
+                postal_code: details.postalCode,
+                country: details.country || "AT",
+              },
             },
           },
         },
@@ -158,6 +165,8 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
             billingDetails: {
               name: "never",
               phone: "never",
+              email: "never",
+              address: "never",
             },
           },
         }}
@@ -200,8 +209,8 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
 
   const validate = (): boolean => {
     if (cart.length === 0) { onValidationError("Your cart is empty."); return false; }
-    if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim()) {
-      onValidationError("Please fill in your name, phone, and delivery address.");
+    if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim() || !details.city.trim() || !details.postalCode.trim()) {
+      onValidationError("Please fill in your name, phone, address, city, and postal code.");
       return false;
     }
     return true;
@@ -221,7 +230,19 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
       clientSecret,
       confirmParams: {
         return_url: `${window.location.origin}/order/checkout`,
-        payment_method_data: { billing_details: { name: details.fullName, phone: details.phone } },
+        payment_method_data: {
+          billing_details: {
+            name: details.fullName,
+            phone: details.phone,
+            email: details.email || undefined,
+            address: {
+              line1: details.address,
+              city: details.city,
+              postal_code: details.postalCode,
+              country: details.country || "AT",
+            },
+          },
+        },
       },
       redirect: "if_required",
     });
@@ -547,13 +568,59 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Delivery address</label>
-                  <textarea
-                    className="checkout-textarea"
-                    rows={3}
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                    Email <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional — for receipt)</span>
+                  </label>
+                  <input
+                    className="checkout-input"
+                    type="email"
+                    value={details.email}
+                    onChange={(e) => updateDetails("email", e.target.value)}
+                    placeholder="your@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Street address</label>
+                  <input
+                    className="checkout-input"
                     value={details.address}
                     onChange={(e) => updateDetails("address", e.target.value)}
                     placeholder="Street, building, floor, door"
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>City</label>
+                    <input
+                      className="checkout-input"
+                      value={details.city}
+                      onChange={(e) => updateDetails("city", e.target.value)}
+                      placeholder="Vienna"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Postal code</label>
+                    <input
+                      className="checkout-input"
+                      value={details.postalCode}
+                      onChange={(e) => updateDetails("postalCode", e.target.value)}
+                      placeholder="1010"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                    Country <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(ISO code)</span>
+                  </label>
+                  <input
+                    className="checkout-input"
+                    value={details.country}
+                    onChange={(e) => updateDetails("country", e.target.value.toUpperCase().slice(0, 2))}
+                    placeholder="AT"
+                    maxLength={2}
                   />
                 </div>
 
