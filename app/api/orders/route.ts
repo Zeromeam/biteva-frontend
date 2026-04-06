@@ -3,6 +3,8 @@ import { type NextRequest } from "next/server";
 import type { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { makeOrderNumber } from "@/lib/order-number";
+import { resend } from "@/lib/resend";
+import { buildReceiptEmail } from "@/lib/email/receipt";
 
 export const dynamic = "force-dynamic";
 
@@ -259,6 +261,30 @@ export async function POST(request: Request) {
         })
       ),
     ]);
+    // ─────────────────────────────────────────────────────────────────────
+
+    // ── Send receipt email (best-effort — never fails the order) ─────────
+    if (data.customer.email) {
+      try {
+        const fullOrder = await prisma.order.findUnique({
+          where: { orderNumber: order.orderNumber },
+          include: { items: { include: { product: true } } },
+        });
+
+        if (fullOrder) {
+          const receiptUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/orders/${order.orderNumber}`;
+          const { subject, html } = buildReceiptEmail(fullOrder, receiptUrl);
+          await resend.emails.send({
+            from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
+            to: data.customer.email,
+            subject,
+            html,
+          });
+        }
+      } catch (emailError) {
+        console.error("Receipt email failed (order still created):", emailError);
+      }
+    }
     // ─────────────────────────────────────────────────────────────────────
 
     return Response.json({ ok: true, orderNumber: order.orderNumber }, { status: 201 });
