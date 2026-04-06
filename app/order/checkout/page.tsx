@@ -133,6 +133,10 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
               name: details.fullName,
               phone: details.phone,
               email: `${details.phone.replace(/\D/g, "")}@guest.biteva.com`,
+              address: {
+                line1: details.address,
+                country: "AT",
+              },
             },
           },
         },
