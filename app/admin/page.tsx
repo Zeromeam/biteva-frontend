@@ -14,28 +14,29 @@ type ProductStock = {
 function InventoryRow({ product, onSaved }: { product: ProductStock; onSaved: (updated: ProductStock) => void }) {
   const [stock, setStock] = useState(String(product.stockCount));
   const [threshold, setThreshold] = useState(String(product.lowStockThreshold));
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  async function save() {
-    setSaving(true);
+  async function saveValues(newStock: string, newThreshold: string) {
+    setStatus("saving");
     setError(null);
     try {
       const res = await fetch(`/api/products/${product.slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stockCount: Number(stock),
-          lowStockThreshold: Number(threshold),
+          stockCount: Number(newStock),
+          lowStockThreshold: Number(newThreshold),
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error ?? "Failed to save.");
       onSaved({ ...product, stockCount: data.product.stockCount, lowStockThreshold: data.product.lowStockThreshold });
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 2000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");
-    } finally {
-      setSaving(false);
+      setStatus("error");
     }
   }
 
@@ -48,30 +49,25 @@ function InventoryRow({ product, onSaved }: { product: ProductStock; onSaved: (u
         <strong>{product.name}</strong>
         {isOut && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#c0392b", fontWeight: 700 }}>OUT OF STOCK</span>}
         {isLow && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#c47a1a", fontWeight: 700 }}>LOW</span>}
-        {error && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#c0392b" }}>{error}</p>}
+        {status === "saving" && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#888" }}>Saving…</span>}
+        {status === "saved" && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#5a7a3a" }}>Saved</span>}
+        {status === "error" && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#c0392b" }}>{error}</p>}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <label style={{ fontSize: "12px", color: "#888" }}>Stock</label>
         <input
           type="number" min={0} value={stock}
           onChange={(e) => setStock(e.target.value)}
+          onBlur={(e) => saveValues(e.target.value, threshold)}
           style={{ width: "70px", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.12)", background: "#111", color: "#fff", fontSize: "14px" }}
         />
         <label style={{ fontSize: "12px", color: "#888" }}>Alert at</label>
         <input
           type="number" min={0} value={threshold}
           onChange={(e) => setThreshold(e.target.value)}
+          onBlur={(e) => saveValues(stock, e.target.value)}
           style={{ width: "70px", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.12)", background: "#111", color: "#fff", fontSize: "14px" }}
         />
-        <button
-          type="button"
-          className="submit-button admin-search-button"
-          onClick={save}
-          disabled={saving}
-          style={{ minWidth: "60px" }}
-        >
-          {saving ? "…" : "Save"}
-        </button>
       </div>
     </div>
   );

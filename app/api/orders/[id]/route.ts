@@ -129,8 +129,9 @@ export async function PATCH(
       return Response.json({ error: "Order not found." }, { status: 404 });
     }
 
-    const becomingCancelled =
-      data.status === "CANCELLED" && existingOrder.status !== "CANCELLED";
+    const wasCancelled = existingOrder.status === "CANCELLED";
+    const becomingCancelled = data.status === "CANCELLED" && !wasCancelled;
+    const becomingUncancelled = wasCancelled && data.status !== "CANCELLED";
 
     const [order] = await prisma.$transaction([
       prisma.order.update({
@@ -141,12 +142,21 @@ export async function PATCH(
           items: { include: { product: true } },
         },
       }),
-      // Restore stock when an order is cancelled
+      // Restore stock when cancelled
       ...(becomingCancelled
         ? existingOrder.items.map((item) =>
             prisma.product.update({
               where: { slug: item.product.slug },
               data: { stockCount: { increment: item.quantity } },
+            })
+          )
+        : []),
+      // Re-reserve stock when moving back from cancelled
+      ...(becomingUncancelled
+        ? existingOrder.items.map((item) =>
+            prisma.product.update({
+              where: { slug: item.product.slug },
+              data: { stockCount: { decrement: item.quantity } },
             })
           )
         : []),
