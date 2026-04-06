@@ -82,13 +82,14 @@ async function createOrder(
   }
 }
 
-/** Shared helper — creates a PaymentIntent on the server and returns the clientSecret */
-async function fetchClientSecret(amountCents: number): Promise<string | null> {
+/** Shared helper — creates a PaymentIntent on the server and returns the clientSecret.
+ *  Pass cardOnly=true for the card form (excludes Stripe Link and local methods). */
+async function fetchClientSecret(amountCents: number, cardOnly = false): Promise<string | null> {
   try {
     const res = await fetch("/api/payment-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amountCents, currency: "eur" }),
+      body: JSON.stringify({ amountCents, currency: "eur", cardOnly }),
     });
     const data = await res.json() as { clientSecret?: string };
     return data.clientSecret ?? null;
@@ -97,13 +98,101 @@ async function fetchClientSecret(amountCents: number): Promise<string | null> {
   }
 }
 
-function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuccess, onError }: PaymentSectionProps) {
+// ── Card form — lives inside its own card-only <Elements clientSecret> ─────────
+
+interface CardFormProps {
+  cart: CartItem[];
+  details: CustomerDetails;
+  subtotalCents: number;
+  clientSecret: string;
+  onSuccess: (orderNumber: string) => void;
+  onError: (msg: string) => void;
+}
+
+function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onError }: CardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const [isCardPaying, setIsCardPaying] = useState(false);
-  const [showCardForm, setShowCardForm] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
   const formattedTotal = new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" }).format(subtotalCents / 100);
+
+  const handlePay = async () => {
+    if (!stripe || !elements || isPaying) return;
+    setIsPaying(true);
+    try {
+      const { error: submitError } = await elements.submit();
+      if (submitError) { onError(submitError.message ?? "Please check your card details."); return; }
+
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/order/checkout`,
+        },
+        redirect: "if_required",
+      });
+
+      if (error) { onError(error.message ?? "Payment failed."); return; }
+      if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
+
+      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id);
+      if (!result.ok) { onError(result.error); return; }
+      clearCart();
+      onSuccess(result.orderNumber);
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <PaymentElement
+        options={{
+          fields: {
+            billingDetails: {
+              name: "never",
+              email: "never",
+              phone: "never",
+              address: "never",
+            },
+          },
+        }}
+      />
+      <button
+        type="button"
+        onClick={handlePay}
+        disabled={isPaying || !stripe}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: "100%", padding: "15px 24px", borderRadius: "14px",
+          border: "1px solid rgba(217,158,79,0.35)",
+          background: isPaying ? "rgba(217,158,79,0.07)" : "#D99E4F",
+          color: isPaying ? "#D99E4F" : "#000",
+          fontFamily: "'DM Sans', system-ui, sans-serif",
+          fontSize: "14px", fontWeight: 600,
+          cursor: isPaying ? "not-allowed" : "pointer",
+          opacity: isPaying ? 0.7 : 1,
+          transition: "all 0.2s",
+        }}
+      >
+        {isPaying ? "Processing…" : `Pay ${formattedTotal}`}
+      </button>
+    </div>
+  );
+}
+
+function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuccess, onError }: PaymentSectionProps) {
+  const stripe = useStripe();   // outer Elements — used for Express Checkout only
+  const elements = useElements();
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [isLoadingCard, setIsLoadingCard] = useState(false);
+  const [cardClientSecret, setCardClientSecret] = useState<string | null>(null);
+
+  // Reset card form if cart total changes
+  useEffect(() => {
+    setShowCardForm(false);
+    setCardClientSecret(null);
+  }, [subtotalCents]);
 
   const validate = (): boolean => {
     if (cart.length === 0) { onValidationError("Your cart is empty."); return false; }
@@ -119,7 +208,8 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
     if (!stripe || !elements) return;
     if (!validate()) { event.paymentFailed({ reason: "fail" }); return; }
 
-    const clientSecret = await fetchClientSecret(subtotalCents);
+    // cardOnly=false so Apple Pay / Google Pay are included
+    const clientSecret = await fetchClientSecret(subtotalCents, false);
     if (!clientSecret) { event.paymentFailed({ reason: "fail" }); onError("Could not start payment."); return; }
 
     const { error, paymentIntent } = await stripe.confirmPayment({
@@ -141,39 +231,25 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
     onSuccess(result.orderNumber);
   };
 
-  // ── Card form ────────────────────────────────────────────────────────────
-  const handleCardPay = async () => {
-    if (!stripe || !elements || isCardPaying) return;
-    if (!validate()) return;
-
-    setIsCardPaying(true);
-    try {
-      const { error: submitError } = await elements.submit();
-      if (submitError) { onError(submitError.message ?? "Please check your card details."); return; }
-
-      const clientSecret = await fetchClientSecret(subtotalCents);
-      if (!clientSecret) { onError("Could not start payment."); return; }
-
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        clientSecret,
-        confirmParams: {
-          return_url: `${window.location.origin}/order/checkout`,
-          payment_method_data: { billing_details: { name: details.fullName, phone: details.phone } },
-        },
-        redirect: "if_required",
-      });
-
-      if (error) { onError(error.message ?? "Payment failed."); return; }
-      if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
-
-      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id);
-      if (!result.ok) { onError(result.error); return; }
-      clearCart();
-      onSuccess(result.orderNumber);
-    } finally {
-      setIsCardPaying(false);
+  // ── Card form toggle — creates a card-only PI upfront ────────────────────
+  const handleToggleCard = async () => {
+    if (showCardForm) {
+      setShowCardForm(false);
+      return;
     }
+    setIsLoadingCard(true);
+    // cardOnly=true creates a PI with payment_method_types: ['card']
+    // which excludes Stripe Link entirely at the server level
+    const secret = await fetchClientSecret(subtotalCents, true);
+    setIsLoadingCard(false);
+    if (!secret) { onError("Could not start card payment."); return; }
+    setCardClientSecret(secret);
+    setShowCardForm(true);
+  };
+
+  const cardAppearance = {
+    theme: "night" as const,
+    variables: { colorBackground: "#0c0c0c", colorText: "#e2ddd6", borderRadius: "14px" },
   };
 
   return (
@@ -191,7 +267,8 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
       {/* Toggle: Pay with card */}
       <button
         type="button"
-        onClick={() => setShowCardForm((v) => !v)}
+        onClick={handleToggleCard}
+        disabled={isLoadingCard}
         style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
           width: "100%", padding: "13px 24px", borderRadius: "14px",
@@ -200,51 +277,29 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
           color: showCardForm ? "#D99E4F" : "#9a9290",
           fontFamily: "'DM Sans', system-ui, sans-serif",
           fontSize: "14px", fontWeight: 500,
-          cursor: "pointer", transition: "all 0.2s",
+          cursor: isLoadingCard ? "wait" : "pointer",
+          transition: "all 0.2s",
+          opacity: isLoadingCard ? 0.6 : 1,
         }}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
         </svg>
-        Pay with card
+        {isLoadingCard ? "Loading…" : "Pay with card"}
       </button>
 
-      {/* Card form — only shown when toggled open */}
-      {showCardForm && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <PaymentElement
-            options={{
-              layout: "tabs",
-              fields: {
-                billingDetails: {
-                  name: "never",
-                  email: "never",
-                  phone: "never",
-                  address: "never",
-                },
-              },
-            }}
+      {/* Card form — own Elements instance backed by a card-only PI (no Stripe Link) */}
+      {showCardForm && cardClientSecret && (
+        <Elements stripe={stripePromise} options={{ clientSecret: cardClientSecret, appearance: cardAppearance }}>
+          <CardForm
+            cart={cart}
+            details={details}
+            subtotalCents={subtotalCents}
+            clientSecret={cardClientSecret}
+            onSuccess={(orderNumber) => { onSuccess(orderNumber); }}
+            onError={onError}
           />
-          <button
-            type="button"
-            onClick={handleCardPay}
-            disabled={isCardPaying || !stripe}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              width: "100%", padding: "15px 24px", borderRadius: "14px",
-              border: "1px solid rgba(217,158,79,0.35)",
-              background: isCardPaying ? "rgba(217,158,79,0.07)" : "#D99E4F",
-              color: isCardPaying ? "#D99E4F" : "#000",
-              fontFamily: "'DM Sans', system-ui, sans-serif",
-              fontSize: "14px", fontWeight: 600,
-              cursor: isCardPaying ? "not-allowed" : "pointer",
-              opacity: isCardPaying ? 0.7 : 1,
-              transition: "all 0.2s",
-            }}
-          >
-            {isCardPaying ? "Processing…" : `Pay ${formattedTotal}`}
-          </button>
-        </div>
+        </Elements>
       )}
     </div>
   );
@@ -545,7 +600,6 @@ export default function CheckoutPage() {
                     mode: "payment",
                     amount: subtotalCents,
                     currency: "eur",
-                    payment_method_types: ["card"],
                     appearance: {
                       theme: "night",
                       variables: {
