@@ -151,8 +151,12 @@ const createOrderSchema = z.object({
   items: z.array(itemSchema).min(1, "Cart is empty"),
   customer: z.object({
     fullName: z.string().trim().min(1, "Full name is required"),
+    email: z.string().trim().optional(),
     phone: z.string().trim().min(1, "Phone is required"),
     address: z.string().trim().min(1, "Address is required"),
+    city: z.string().trim().min(1, "City is required"),
+    postalCode: z.string().trim().min(1, "Postal code is required"),
+    country: z.string().trim().default("AT"),
     note: z.string().optional(),
   }),
   subtotal: z.number(),
@@ -230,8 +234,12 @@ export async function POST(request: Request) {
           totalAmountCents,
           customerId: customer.id,
           shippingFullName: data.customer.fullName,
+          shippingEmail: data.customer.email ?? null,
           shippingPhone: data.customer.phone,
           shippingAddressLine1: data.customer.address,
+          shippingCity: data.customer.city,
+          shippingPostalCode: data.customer.postalCode,
+          shippingCountry: data.customer.country,
           stripePaymentIntentId: data.stripePaymentIntentId ?? null,
           items: {
             create: data.items.map((item) => ({

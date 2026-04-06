@@ -23,8 +23,12 @@ export type CartItem = {
 
 export type CustomerDetails = {
   fullName: string;
+  email: string;
   phone: string;
   address: string;
+  city: string;
+  postalCode: string;
+  country: string;
   note: string;
 };
 
@@ -76,8 +80,12 @@ export const drinks: MenuOption[] = [
 
 export const initialCustomerDetails: CustomerDetails = {
   fullName: "",
+  email: "",
   phone: "",
   address: "",
+  city: "",
+  postalCode: "",
+  country: "AT",
   note: "",
 };
 
