@@ -3,7 +3,7 @@ import { type NextRequest } from "next/server";
 import type { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { makeOrderNumber } from "@/lib/order-number";
-import { resend } from "@/lib/resend";
+import { getResend } from "@/lib/resend";
 import { buildReceiptEmail } from "@/lib/email/receipt";
 
 export const dynamic = "force-dynamic";
@@ -274,7 +274,7 @@ export async function POST(request: Request) {
         if (fullOrder) {
           const receiptUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/orders/${order.orderNumber}`;
           const { subject, html } = buildReceiptEmail(fullOrder, receiptUrl);
-          await resend.emails.send({
+          await getResend().emails.send({
             from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
             to: data.customer.email,
             subject,
