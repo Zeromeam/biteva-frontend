@@ -101,11 +101,14 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
   const stripe = useStripe();
   const elements = useElements();
   const [isCardPaying, setIsCardPaying] = useState(false);
+  const [showCardForm, setShowCardForm] = useState(false);
+
+  const formattedTotal = new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" }).format(subtotalCents / 100);
 
   const validate = (): boolean => {
     if (cart.length === 0) { onValidationError("Your cart is empty."); return false; }
     if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim()) {
-      onValidationError("Please fill your name, phone, and address.");
+      onValidationError("Please fill in your name, phone, and delivery address.");
       return false;
     }
     return true;
@@ -145,15 +148,12 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
 
     setIsCardPaying(true);
     try {
-      // Validate the card fields
       const { error: submitError } = await elements.submit();
       if (submitError) { onError(submitError.message ?? "Please check your card details."); return; }
 
-      // Create PaymentIntent
       const clientSecret = await fetchClientSecret(subtotalCents);
       if (!clientSecret) { onError("Could not start payment."); return; }
 
-      // Confirm card payment
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret,
@@ -177,8 +177,9 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {/* Apple Pay / Google Pay — only renders if supported by browser */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+
+      {/* Apple Pay / Google Pay — only renders if the browser supports it */}
       <ExpressCheckoutElement
         onConfirm={handleExpressConfirm}
         options={{
@@ -187,41 +188,64 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
         }}
       />
 
-      {/* Divider */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.07)" }} />
-        <span style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#3a3a3a" }}>or pay with card</span>
-        <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.07)" }} />
-      </div>
-
-      {/* Card form */}
-      <PaymentElement
-        options={{
-          layout: "tabs",
-          fields: { billingDetails: { name: "never", phone: "never" } },
-        }}
-      />
-
-      {/* Pay button */}
+      {/* Toggle: Pay with card */}
       <button
         type="button"
-        onClick={handleCardPay}
-        disabled={isCardPaying || !stripe}
+        onClick={() => setShowCardForm((v) => !v)}
         style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: "100%", padding: "15px 24px", borderRadius: "14px",
-          border: "1px solid rgba(217,158,79,0.35)",
-          background: isCardPaying ? "rgba(217,158,79,0.07)" : "#D99E4F",
-          color: isCardPaying ? "#D99E4F" : "#000",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+          width: "100%", padding: "13px 24px", borderRadius: "14px",
+          border: showCardForm ? "1px solid rgba(217,158,79,0.4)" : "1px solid rgba(255,255,255,0.1)",
+          background: showCardForm ? "rgba(217,158,79,0.06)" : "rgba(255,255,255,0.03)",
+          color: showCardForm ? "#D99E4F" : "#9a9290",
           fontFamily: "'DM Sans', system-ui, sans-serif",
-          fontSize: "14px", fontWeight: 600,
-          cursor: isCardPaying ? "not-allowed" : "pointer",
-          opacity: isCardPaying ? 0.7 : 1,
-          transition: "all 0.2s",
+          fontSize: "14px", fontWeight: 500,
+          cursor: "pointer", transition: "all 0.2s",
         }}
       >
-        {isCardPaying ? "Processing…" : `Pay ${new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" }).format(subtotalCents / 100)}`}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+        Pay with card
       </button>
+
+      {/* Card form — only shown when toggled open */}
+      {showCardForm && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <PaymentElement
+            options={{
+              layout: "tabs",
+              fields: {
+                billingDetails: {
+                  name: "never",
+                  email: "never",
+                  phone: "never",
+                  address: "never",
+                },
+              },
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleCardPay}
+            disabled={isCardPaying || !stripe}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: "100%", padding: "15px 24px", borderRadius: "14px",
+              border: "1px solid rgba(217,158,79,0.35)",
+              background: isCardPaying ? "rgba(217,158,79,0.07)" : "#D99E4F",
+              color: isCardPaying ? "#D99E4F" : "#000",
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              fontSize: "14px", fontWeight: 600,
+              cursor: isCardPaying ? "not-allowed" : "pointer",
+              opacity: isCardPaying ? 0.7 : 1,
+              transition: "all 0.2s",
+            }}
+          >
+            {isCardPaying ? "Processing…" : `Pay ${formattedTotal}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -439,8 +463,8 @@ export default function CheckoutPage() {
 
             {/* Customer details */}
             <div style={{ borderRadius: "22px", border: "1px solid rgba(255,255,255,0.07)", background: "#0c0c0c", padding: "24px" }}>
-              <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "22px", fontWeight: 600, color: "#fff", margin: "0 0 4px" }}>Your details</h2>
-              <p style={{ fontSize: "13px", color: "#5a5550", margin: "0 0 20px", lineHeight: 1.5 }}>Sent together with your order.</p>
+              <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "22px", fontWeight: 600, color: "#fff", margin: "0 0 4px" }}>Delivery details</h2>
+              <p style={{ fontSize: "13px", color: "#5a5550", margin: "0 0 20px", lineHeight: 1.5 }}>We&apos;ll deliver your order to the address below.</p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 <div>
@@ -464,7 +488,7 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Address</label>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Delivery address</label>
                   <textarea
                     className="checkout-textarea"
                     rows={3}
@@ -475,7 +499,9 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Note</label>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                    Note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
+                  </label>
                   <textarea
                     className="checkout-textarea"
                     rows={2}
