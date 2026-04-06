@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCentsAsEuro } from "@/lib/money";
+import { PrintButton } from "./print-button";
 
 type PageProps = {
   params: Promise<{ orderNumber: string }>;
@@ -55,17 +56,7 @@ export default async function OrderReceiptPage({ params }: PageProps) {
               <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "30px", fontWeight: 600, fontStyle: "italic", color: "#D99E4F", margin: "0 0 4px" }}>Biteva</p>
               <p style={{ fontSize: "11px", letterSpacing: "0.2em", textTransform: "uppercase", color: "#525252", margin: 0 }}>Beleg / Receipt</p>
             </div>
-            <button
-              className="no-print"
-              onClick={() => window.print()}
-              style={{
-                padding: "10px 22px", borderRadius: "99px", border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.04)", color: "#9a9290", fontFamily: "'DM Sans', system-ui, sans-serif",
-                fontSize: "13px", fontWeight: 500, cursor: "pointer",
-              }}
-            >
-              Drucken / Print
-            </button>
+            <div className="no-print"><PrintButton /></div>
           </div>
 
           {/* Card */}
