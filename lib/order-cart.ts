@@ -53,7 +53,6 @@ export const products: MenuProduct[] = [
 ];
 
 export const sides: MenuOption[] = [
-  { id: "none", name: "No side", price: 0 },
   { id: "fries", name: "Fries", price: 2.2 },
   { id: "rice", name: "Rice", price: 2.0 },
   { id: "salad", name: "Salad", price: 2.3 },
@@ -68,7 +67,6 @@ export const sauces: MenuOption[] = [
 ];
 
 export const drinks: MenuOption[] = [
-  { id: "none", name: "No drink", price: 0 },
   { id: "cola", name: "Cola", price: 2.0 },
   { id: "cola-zero", name: "Cola Zero", price: 2.0 },
   { id: "sprite", name: "Sprite", price: 2.0 },
