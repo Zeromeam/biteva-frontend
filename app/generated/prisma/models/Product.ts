@@ -28,10 +28,14 @@ export type AggregateProduct = {
 
 export type ProductAvgAggregateOutputType = {
   priceCents: number | null
+  stockCount: number | null
+  lowStockThreshold: number | null
 }
 
 export type ProductSumAggregateOutputType = {
   priceCents: number | null
+  stockCount: number | null
+  lowStockThreshold: number | null
 }
 
 export type ProductMinAggregateOutputType = {
@@ -41,6 +45,8 @@ export type ProductMinAggregateOutputType = {
   description: string | null
   priceCents: number | null
   active: boolean | null
+  stockCount: number | null
+  lowStockThreshold: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -52,6 +58,8 @@ export type ProductMaxAggregateOutputType = {
   description: string | null
   priceCents: number | null
   active: boolean | null
+  stockCount: number | null
+  lowStockThreshold: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -63,6 +71,8 @@ export type ProductCountAggregateOutputType = {
   description: number
   priceCents: number
   active: number
+  stockCount: number
+  lowStockThreshold: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -71,10 +81,14 @@ export type ProductCountAggregateOutputType = {
 
 export type ProductAvgAggregateInputType = {
   priceCents?: true
+  stockCount?: true
+  lowStockThreshold?: true
 }
 
 export type ProductSumAggregateInputType = {
   priceCents?: true
+  stockCount?: true
+  lowStockThreshold?: true
 }
 
 export type ProductMinAggregateInputType = {
@@ -84,6 +98,8 @@ export type ProductMinAggregateInputType = {
   description?: true
   priceCents?: true
   active?: true
+  stockCount?: true
+  lowStockThreshold?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -95,6 +111,8 @@ export type ProductMaxAggregateInputType = {
   description?: true
   priceCents?: true
   active?: true
+  stockCount?: true
+  lowStockThreshold?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -106,6 +124,8 @@ export type ProductCountAggregateInputType = {
   description?: true
   priceCents?: true
   active?: true
+  stockCount?: true
+  lowStockThreshold?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -204,6 +224,8 @@ export type ProductGroupByOutputType = {
   description: string | null
   priceCents: number
   active: boolean
+  stockCount: number
+  lowStockThreshold: number
   createdAt: Date
   updatedAt: Date
   _count: ProductCountAggregateOutputType | null
@@ -238,6 +260,8 @@ export type ProductWhereInput = {
   description?: Prisma.StringNullableFilter<"Product"> | string | null
   priceCents?: Prisma.IntFilter<"Product"> | number
   active?: Prisma.BoolFilter<"Product"> | boolean
+  stockCount?: Prisma.IntFilter<"Product"> | number
+  lowStockThreshold?: Prisma.IntFilter<"Product"> | number
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   orderItems?: Prisma.OrderItemListRelationFilter
@@ -250,6 +274,8 @@ export type ProductOrderByWithRelationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   priceCents?: Prisma.SortOrder
   active?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   orderItems?: Prisma.OrderItemOrderByRelationAggregateInput
@@ -265,6 +291,8 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   description?: Prisma.StringNullableFilter<"Product"> | string | null
   priceCents?: Prisma.IntFilter<"Product"> | number
   active?: Prisma.BoolFilter<"Product"> | boolean
+  stockCount?: Prisma.IntFilter<"Product"> | number
+  lowStockThreshold?: Prisma.IntFilter<"Product"> | number
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   orderItems?: Prisma.OrderItemListRelationFilter
@@ -277,6 +305,8 @@ export type ProductOrderByWithAggregationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   priceCents?: Prisma.SortOrder
   active?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ProductCountOrderByAggregateInput
@@ -296,6 +326,8 @@ export type ProductScalarWhereWithAggregatesInput = {
   description?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   priceCents?: Prisma.IntWithAggregatesFilter<"Product"> | number
   active?: Prisma.BoolWithAggregatesFilter<"Product"> | boolean
+  stockCount?: Prisma.IntWithAggregatesFilter<"Product"> | number
+  lowStockThreshold?: Prisma.IntWithAggregatesFilter<"Product"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
 }
@@ -307,6 +339,8 @@ export type ProductCreateInput = {
   description?: string | null
   priceCents: number
   active?: boolean
+  stockCount?: number
+  lowStockThreshold?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   orderItems?: Prisma.OrderItemCreateNestedManyWithoutProductInput
@@ -319,6 +353,8 @@ export type ProductUncheckedCreateInput = {
   description?: string | null
   priceCents: number
   active?: boolean
+  stockCount?: number
+  lowStockThreshold?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutProductInput
@@ -331,6 +367,8 @@ export type ProductUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   priceCents?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockCount?: Prisma.IntFieldUpdateOperationsInput | number
+  lowStockThreshold?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orderItems?: Prisma.OrderItemUpdateManyWithoutProductNestedInput
@@ -343,6 +381,8 @@ export type ProductUncheckedUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   priceCents?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockCount?: Prisma.IntFieldUpdateOperationsInput | number
+  lowStockThreshold?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutProductNestedInput
@@ -355,6 +395,8 @@ export type ProductCreateManyInput = {
   description?: string | null
   priceCents: number
   active?: boolean
+  stockCount?: number
+  lowStockThreshold?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -366,6 +408,8 @@ export type ProductUpdateManyMutationInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   priceCents?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockCount?: Prisma.IntFieldUpdateOperationsInput | number
+  lowStockThreshold?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -377,6 +421,8 @@ export type ProductUncheckedUpdateManyInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   priceCents?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockCount?: Prisma.IntFieldUpdateOperationsInput | number
+  lowStockThreshold?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -388,12 +434,16 @@ export type ProductCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   priceCents?: Prisma.SortOrder
   active?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type ProductAvgOrderByAggregateInput = {
   priceCents?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
 }
 
 export type ProductMaxOrderByAggregateInput = {
@@ -403,6 +453,8 @@ export type ProductMaxOrderByAggregateInput = {
   description?: Prisma.SortOrder
   priceCents?: Prisma.SortOrder
   active?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -414,12 +466,16 @@ export type ProductMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   priceCents?: Prisma.SortOrder
   active?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type ProductSumOrderByAggregateInput = {
   priceCents?: Prisma.SortOrder
+  stockCount?: Prisma.SortOrder
+  lowStockThreshold?: Prisma.SortOrder
 }
 
 export type ProductScalarRelationFilter = {
@@ -472,6 +528,8 @@ export type ProductCreateWithoutOrderItemsInput = {
   description?: string | null
   priceCents: number
   active?: boolean
+  stockCount?: number
+  lowStockThreshold?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -483,6 +541,8 @@ export type ProductUncheckedCreateWithoutOrderItemsInput = {
   description?: string | null
   priceCents: number
   active?: boolean
+  stockCount?: number
+  lowStockThreshold?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -510,6 +570,8 @@ export type ProductUpdateWithoutOrderItemsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   priceCents?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockCount?: Prisma.IntFieldUpdateOperationsInput | number
+  lowStockThreshold?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -521,6 +583,8 @@ export type ProductUncheckedUpdateWithoutOrderItemsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   priceCents?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockCount?: Prisma.IntFieldUpdateOperationsInput | number
+  lowStockThreshold?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -563,6 +627,8 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   description?: boolean
   priceCents?: boolean
   active?: boolean
+  stockCount?: boolean
+  lowStockThreshold?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   orderItems?: boolean | Prisma.Product$orderItemsArgs<ExtArgs>
@@ -576,6 +642,8 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   description?: boolean
   priceCents?: boolean
   active?: boolean
+  stockCount?: boolean
+  lowStockThreshold?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["product"]>
@@ -587,6 +655,8 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   description?: boolean
   priceCents?: boolean
   active?: boolean
+  stockCount?: boolean
+  lowStockThreshold?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["product"]>
@@ -598,11 +668,13 @@ export type ProductSelectScalar = {
   description?: boolean
   priceCents?: boolean
   active?: boolean
+  stockCount?: boolean
+  lowStockThreshold?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "description" | "priceCents" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "description" | "priceCents" | "active" | "stockCount" | "lowStockThreshold" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   orderItems?: boolean | Prisma.Product$orderItemsArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
@@ -622,6 +694,8 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     description: string | null
     priceCents: number
     active: boolean
+    stockCount: number
+    lowStockThreshold: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["product"]>
@@ -1054,6 +1128,8 @@ export interface ProductFieldRefs {
   readonly description: Prisma.FieldRef<"Product", 'String'>
   readonly priceCents: Prisma.FieldRef<"Product", 'Int'>
   readonly active: Prisma.FieldRef<"Product", 'Boolean'>
+  readonly stockCount: Prisma.FieldRef<"Product", 'Int'>
+  readonly lowStockThreshold: Prisma.FieldRef<"Product", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Product", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Product", 'DateTime'>
 }
