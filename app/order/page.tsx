@@ -158,10 +158,13 @@ const CheckIcon = () => (
 );
 
 // ── ProductCard ─────────────────────────────────────────────────────────
-function ProductCard({ product, index, onOrder }: {
+function ProductCard({ product, index, onOrder, stock, lowStockThreshold }: {
   product: MenuProduct; index: number; onOrder: (p: MenuProduct) => void;
+  stock: number; lowStockThreshold: number;
 }) {
   const [imgFailed, setImgFailed] = useState(!product.image);
+  const outOfStock = stock === 0;
+  const lowStock = stock > 0 && stock <= lowStockThreshold;
   return (
     <article
       style={{
@@ -206,12 +209,19 @@ function ProductCard({ product, index, onOrder }: {
         <p style={{ fontSize:"13px", color:"#5a5550", lineHeight:1.55, margin:0, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as const, overflow:"hidden" }}>
           {product.subtitle}
         </p>
-        <button type="button" onClick={()=>onOrder(product)}
-          style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", marginTop:"18px", padding:"13px 18px", borderRadius:"14px", border:"1px solid rgba(217,158,79,0.35)", background:"rgba(217,158,79,0.07)", color:"#D99E4F", fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"13px", fontWeight:600, cursor:"pointer", transition:"all 0.2s" }}
-          onMouseEnter={e=>{ const el=e.currentTarget as HTMLButtonElement; el.style.background="#D99E4F"; el.style.color="#000"; el.style.borderColor="#D99E4F"; }}
-          onMouseLeave={e=>{ const el=e.currentTarget as HTMLButtonElement; el.style.background="rgba(217,158,79,0.07)"; el.style.color="#D99E4F"; el.style.borderColor="rgba(217,158,79,0.35)"; }}
+        {lowStock && (
+          <p style={{ fontSize:"12px", color:"#c47a1a", fontWeight:600, margin:"12px 0 0", textAlign:"center" }}>
+            Only {stock} left!
+          </p>
+        )}
+        <button type="button" onClick={()=>{ if(!outOfStock) onOrder(product); }}
+          disabled={outOfStock}
+          style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", marginTop:"10px", padding:"13px 18px", borderRadius:"14px", border: outOfStock ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(217,158,79,0.35)", background: outOfStock ? "rgba(255,255,255,0.04)" : "rgba(217,158,79,0.07)", color: outOfStock ? "#555" : "#D99E4F", fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"13px", fontWeight:600, cursor: outOfStock ? "not-allowed" : "pointer", transition:"all 0.2s" }}
+          onMouseEnter={e=>{ if(!outOfStock){ const el=e.currentTarget as HTMLButtonElement; el.style.background="#D99E4F"; el.style.color="#000"; el.style.borderColor="#D99E4F"; } }}
+          onMouseLeave={e=>{ if(!outOfStock){ const el=e.currentTarget as HTMLButtonElement; el.style.background="rgba(217,158,79,0.07)"; el.style.color="#D99E4F"; el.style.borderColor="rgba(217,158,79,0.35)"; } }}
         >
-          <span>Customise &amp; Order</span><ChevRight />
+          <span>{outOfStock ? "Out of Stock" : "Customise & Order"}</span>
+          {!outOfStock && <ChevRight />}
         </button>
       </div>
     </article>
@@ -281,9 +291,12 @@ function ItemRow({
   );
 }
 
+type StockInfo = { stockCount: number; lowStockThreshold: number };
+
 // ── Main Page ───────────────────────────────────────────────────────────
 export default function OrderPage() {
   const [cartCount, setCartCount] = useState(0);
+  const [stockMap, setStockMap] = useState<Record<string, StockInfo>>({});
   const [activeProduct, setActiveProduct] = useState<MenuProduct | null>(null);
   const [stepIndex, setStepIndex]         = useState(0);
   const [mainQty, setMainQty]             = useState(1);
@@ -301,6 +314,17 @@ export default function OrderPage() {
     const sync = () => setCartCount(getCartCount(loadCart()));
     sync();
     return subscribeToCartUpdates(sync);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then(({ products: list }: { products: Array<{ slug: string; stockCount: number; lowStockThreshold: number }> }) => {
+        const map: Record<string, StockInfo> = {};
+        for (const p of list) map[p.slug] = { stockCount: p.stockCount, lowStockThreshold: p.lowStockThreshold };
+        setStockMap(map);
+      })
+      .catch(() => { /* non-fatal: stock UI degrades gracefully */ });
   }, []);
 
   useEffect(() => {
@@ -520,7 +544,14 @@ export default function OrderPage() {
         {/* ── Grid ─────────────────────────────────────── */}
         <div className="product-grid">
           {products.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} onOrder={openBuilder}/>
+            <ProductCard
+              key={p.id}
+              product={p}
+              index={i}
+              onOrder={openBuilder}
+              stock={stockMap[p.id]?.stockCount ?? Infinity}
+              lowStockThreshold={stockMap[p.id]?.lowStockThreshold ?? 5}
+            />
           ))}
         </div>
 
@@ -548,7 +579,7 @@ export default function OrderPage() {
                   <div style={{ display:"flex", alignItems:"center", borderRadius:"10px", border:"1px solid rgba(255,255,255,0.1)", overflow:"hidden" }}>
                     <button onClick={()=>setMainQty(q=>Math.max(1,q-1))} disabled={mainQty<=1} style={{ width:"32px", height:"32px", border:"none", background:"transparent", color: mainQty<=1?"#333":"#777", fontSize:"16px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>−</button>
                     <span style={{ width:"26px", textAlign:"center", fontSize:"14px", fontWeight:600, color:"#fff" }}>{mainQty}</span>
-                    <button onClick={()=>setMainQty(q=>q+1)} style={{ width:"32px", height:"32px", border:"none", background:"transparent", color:"#777", fontSize:"16px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+                    <button onClick={()=>{ const max = stockMap[activeProduct?.id ?? ""]?.stockCount ?? Infinity; setMainQty(q=>Math.min(q+1, max)); }} disabled={mainQty >= (stockMap[activeProduct?.id ?? ""]?.stockCount ?? Infinity)} style={{ width:"32px", height:"32px", border:"none", background:"transparent", color:"#777", fontSize:"16px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
                   </div>
                   <button onClick={closeBuilder} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:"32px", height:"32px", borderRadius:"50%", border:"none", background:"rgba(255,255,255,0.05)", color:"#666", cursor:"pointer" }}>
                     <XIcon/>
