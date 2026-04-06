@@ -3,9 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCentsAsEuro } from "@/lib/money";
 
 type PageProps = {
-  params: Promise<{
-    orderNumber: string;
-  }>;
+  params: Promise<{ orderNumber: string }>;
 };
 
 export default async function OrderReceiptPage({ params }: PageProps) {
@@ -14,84 +12,132 @@ export default async function OrderReceiptPage({ params }: PageProps) {
   const order = await prisma.order.findUnique({
     where: { orderNumber },
     include: {
-      customer: true,
-      items: {
-        include: {
-          product: true,
-        },
-      },
+      items: { include: { product: true } },
     },
   });
 
-  if (!order) {
-    notFound();
-  }
+  if (!order) notFound();
+
+  const addressParts = [
+    order.shippingAddressLine1,
+    order.shippingCity && order.shippingPostalCode
+      ? `${order.shippingPostalCode} ${order.shippingCity}`
+      : order.shippingCity ?? order.shippingPostalCode,
+    order.shippingCountry,
+  ].filter(Boolean);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <div className="rounded-2xl border p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Internal receipt</p>
-            <h1 className="text-2xl font-semibold">{order.orderNumber}</h1>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #080808; }
+
+        @media print {
+          body { background: #fff !important; color: #000 !important; }
+          .no-print { display: none !important; }
+          .print-card {
+            border: 1px solid #ddd !important;
+            background: #fff !important;
+            color: #000 !important;
+          }
+          .print-card * { color: #000 !important; border-color: #ddd !important; }
+          .print-gold { color: #8a6020 !important; }
+        }
+      `}</style>
+
+      <div style={{ minHeight: "100vh", background: "#080808", color: "#e2ddd6", fontFamily: "'DM Sans', system-ui, sans-serif", padding: "48px 24px 80px" }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: "36px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
+            <div>
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "30px", fontWeight: 600, fontStyle: "italic", color: "#D99E4F", margin: "0 0 4px" }}>Biteva</p>
+              <p style={{ fontSize: "11px", letterSpacing: "0.2em", textTransform: "uppercase", color: "#525252", margin: 0 }}>Beleg / Receipt</p>
+            </div>
+            <button
+              className="no-print"
+              onClick={() => window.print()}
+              style={{
+                padding: "10px 22px", borderRadius: "99px", border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.04)", color: "#9a9290", fontFamily: "'DM Sans', system-ui, sans-serif",
+                fontSize: "13px", fontWeight: 500, cursor: "pointer",
+              }}
+            >
+              Drucken / Print
+            </button>
           </div>
 
-          <div className="text-sm">
-            <div>Status: {order.status}</div>
-            <div>Created: {order.createdAt.toLocaleString("en-AT")}</div>
+          {/* Card */}
+          <div className="print-card" style={{ borderRadius: "22px", border: "1px solid rgba(255,255,255,0.08)", background: "#0c0c0c", padding: "32px" }}>
+
+            {/* Order meta */}
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "28px", paddingBottom: "28px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <p style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 4px" }}>Bestellnummer</p>
+                <p style={{ fontSize: "20px", fontWeight: 600, color: "#fff", margin: 0, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{order.orderNumber}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 4px" }}>Datum</p>
+                <p style={{ fontSize: "15px", fontWeight: 500, color: "#e2ddd6", margin: 0 }}>
+                  {order.createdAt.toLocaleDateString("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                </p>
+              </div>
+            </div>
+
+            {/* Delivery address */}
+            {addressParts.length > 0 && (
+              <div style={{ marginBottom: "28px", paddingBottom: "28px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <p style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 10px" }}>Lieferadresse</p>
+                <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#9a9290" }}>
+                  {order.shippingFullName && <div style={{ color: "#e2ddd6", fontWeight: 500 }}>{order.shippingFullName}</div>}
+                  {addressParts.map((part, i) => <div key={i}>{part}</div>)}
+                  {order.shippingPhone && <div>{order.shippingPhone}</div>}
+                </div>
+              </div>
+            )}
+
+            {/* Items */}
+            <div style={{ marginBottom: "28px" }}>
+              <p style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 14px" }}>Bestellte Artikel</p>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <th style={{ textAlign: "left", fontSize: "11px", color: "#525252", fontWeight: 500, padding: "0 0 10px", letterSpacing: "0.08em" }}>Artikel</th>
+                    <th style={{ textAlign: "center", fontSize: "11px", color: "#525252", fontWeight: 500, padding: "0 0 10px", letterSpacing: "0.08em" }}>Menge</th>
+                    <th style={{ textAlign: "right", fontSize: "11px", color: "#525252", fontWeight: 500, padding: "0 0 10px", letterSpacing: "0.08em" }}>Einzelpreis</th>
+                    <th style={{ textAlign: "right", fontSize: "11px", color: "#525252", fontWeight: 500, padding: "0 0 10px", letterSpacing: "0.08em" }}>Gesamt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item) => (
+                    <tr key={item.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td style={{ padding: "12px 0", fontSize: "14px", color: "#e2ddd6" }}>{item.product.name}</td>
+                      <td style={{ padding: "12px 0", fontSize: "14px", color: "#9a9290", textAlign: "center" }}>{item.quantity}</td>
+                      <td style={{ padding: "12px 0", fontSize: "14px", color: "#9a9290", textAlign: "right" }}>{formatCentsAsEuro(item.unitPriceCents)}</td>
+                      <td style={{ padding: "12px 0", fontSize: "14px", color: "#e2ddd6", textAlign: "right", fontWeight: 500 }}>{formatCentsAsEuro(item.lineTotalCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Total */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.08)", marginBottom: "28px" }}>
+              <span style={{ fontSize: "15px", fontWeight: 600, color: "#e2ddd6" }}>Gesamtbetrag</span>
+              <span className="print-gold" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "26px", fontWeight: 600, color: "#D99E4F" }}>
+                {formatCentsAsEuro(order.totalAmountCents)}
+              </span>
+            </div>
+
+            {/* VAT exemption note */}
+            <div style={{ paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: "12px", color: "#525252", lineHeight: 1.7 }}>
+              Gemäß § 6 Abs. 1 Z 27 UStG wird keine Umsatzsteuer berechnet.
+            </div>
+
           </div>
-        </div>
-
-        <div className="mt-8 grid gap-6 sm:grid-cols-2">
-          <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Customer
-            </h2>
-            <div className="mt-2 text-sm">
-              <div>{order.customer.fullName}</div>
-              <div>{order.customer.email}</div>
-              {order.customer.phone ? <div>{order.customer.phone}</div> : null}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Summary
-            </h2>
-            <div className="mt-2 text-sm">
-              <div>Currency: {order.currency}</div>
-              <div>Total: {formatCentsAsEuro(order.totalAmountCents)}</div>
-            </div>
-          </section>
-        </div>
-
-        <div className="mt-8 overflow-hidden rounded-2xl border">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3">Item</th>
-                <th className="px-4 py-3">Qty</th>
-                <th className="px-4 py-3">Unit</th>
-                <th className="px-4 py-3">Line total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.product.name}</td>
-                  <td className="px-4 py-3">{item.quantity}</td>
-                  <td className="px-4 py-3">
-                    {formatCentsAsEuro(item.unitPriceCents)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {formatCentsAsEuro(item.lineTotalCents)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
-    </main>
+    </>
   );
 }
