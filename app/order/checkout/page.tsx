@@ -92,6 +92,7 @@ function ExpressCheckout({ cart, details, subtotalCents, onValidationError, onSu
       elements,
       clientSecret,
       confirmParams: {
+        return_url: `${window.location.origin}/order/checkout`,
         payment_method_data: {
           billing_details: {
             name: details.fullName,
