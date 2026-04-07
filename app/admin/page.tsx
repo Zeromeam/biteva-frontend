@@ -124,6 +124,9 @@ type OrderSummary = {
   status: OrderStatus;
   currency: string;
   totalAmountCents: number;
+  deliveryMode: "address" | "gps";
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   createdAt: string;
   updatedAt: string;
   customer: {
@@ -457,8 +460,13 @@ export default function AdminOrdersPage() {
                   >
                     <div className="admin-order-row-top">
                       <strong>{order.orderNumber}</strong>
-                      <span className={`status-badge status-badge--${order.status.toLowerCase()}`}>
-                        {formatStatusLabel(order.status)}
+                      <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {order.deliveryMode === "gps" && (
+                          <span style={{ fontSize: "10px", fontWeight: 700, color: "#D99E4F", background: "rgba(217,158,79,0.12)", padding: "2px 6px", borderRadius: "4px", lineHeight: 1.4 }}>GPS</span>
+                        )}
+                        <span className={`status-badge status-badge--${order.status.toLowerCase()}`}>
+                          {formatStatusLabel(order.status)}
+                        </span>
                       </span>
                     </div>
                     <p>{order.customer.fullName}</p>
@@ -519,15 +527,48 @@ export default function AdminOrdersPage() {
               </div>
 
               <div className="admin-detail-section">
-                <h3>Shipping address</h3>
-                <p>{selectedOrder.shipping.addressLine1 ?? "—"}</p>
-                {selectedOrder.shipping.addressLine2 ? (
-                  <p>{selectedOrder.shipping.addressLine2}</p>
-                ) : null}
-                <p>
-                  {selectedOrder.shipping.postalCode ?? "—"} {selectedOrder.shipping.city ?? ""}
-                </p>
-                <p>{selectedOrder.shipping.country ?? "—"}</p>
+                <h3>Delivery</h3>
+                {selectedOrder.deliveryMode === "gps" && selectedOrder.deliveryLat != null && selectedOrder.deliveryLng != null ? (
+                  <>
+                    <p style={{ fontSize: "12px", color: "#D99E4F", fontWeight: 600, marginBottom: "8px" }}>GPS Pin</p>
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "block", borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}
+                    >
+                      {/* Static map preview via OpenStreetMap */}
+                      <img
+                        src={`https://staticmap.openstreetmap.de/staticmap.php?center=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng}&zoom=16&size=400x200&markers=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng},ol-marker`}
+                        alt="Delivery location map"
+                        style={{ width: "100%", height: "auto", display: "block" }}
+                      />
+                    </a>
+                    <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#888" }}>
+                      {selectedOrder.deliveryLat.toFixed(6)}, {selectedOrder.deliveryLng.toFixed(6)}
+                    </p>
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "inline-block", marginTop: "6px", fontSize: "13px", color: "#D99E4F", fontWeight: 600, textDecoration: "underline" }}
+                    >
+                      Open in Google Maps
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: "12px", color: "#888", fontWeight: 600, marginBottom: "4px" }}>Address</p>
+                    <p>{selectedOrder.shipping.addressLine1 ?? "—"}</p>
+                    {selectedOrder.shipping.addressLine2 ? (
+                      <p>{selectedOrder.shipping.addressLine2}</p>
+                    ) : null}
+                    <p>
+                      {selectedOrder.shipping.postalCode ?? "—"} {selectedOrder.shipping.city ?? ""}
+                    </p>
+                    <p>{selectedOrder.shipping.country ?? "—"}</p>
+                  </>
+                )}
               </div>
 
               <div className="admin-detail-section">

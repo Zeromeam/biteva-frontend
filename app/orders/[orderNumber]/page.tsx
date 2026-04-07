@@ -76,8 +76,24 @@ export default async function OrderReceiptPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Delivery address */}
-            {addressParts.length > 0 && (
+            {/* Delivery info */}
+            {order.deliveryMode === "gps" && order.deliveryLat != null && order.deliveryLng != null ? (
+              <div style={{ marginBottom: "28px", paddingBottom: "28px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <p style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 10px" }}>Lieferstandort (GPS)</p>
+                <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#9a9290" }}>
+                  {order.shippingFullName && <div style={{ color: "#e2ddd6", fontWeight: 500 }}>{order.shippingFullName}</div>}
+                  {order.shippingPhone && <div>{order.shippingPhone}</div>}
+                  <a
+                    href={`https://www.google.com/maps?q=${order.deliveryLat},${order.deliveryLng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#D99E4F", textDecoration: "underline", fontWeight: 500 }}
+                  >
+                    Standort auf Karte anzeigen
+                  </a>
+                </div>
+              </div>
+            ) : addressParts.length > 0 ? (
               <div style={{ marginBottom: "28px", paddingBottom: "28px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <p style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 10px" }}>Lieferadresse</p>
                 <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#9a9290" }}>
@@ -86,7 +102,7 @@ export default async function OrderReceiptPage({ params }: PageProps) {
                   {order.shippingPhone && <div>{order.shippingPhone}</div>}
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Items */}
             <div style={{ marginBottom: "28px" }}>

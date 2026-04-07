@@ -13,6 +13,9 @@ function serializeOrder(order: {
   status: string;
   currency: string;
   totalAmountCents: number;
+  deliveryMode: string | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   shippingFullName: string | null;
   shippingEmail: string | null;
   shippingPhone: string | null;
@@ -45,6 +48,9 @@ function serializeOrder(order: {
     status: order.status,
     currency: order.currency,
     totalAmountCents: order.totalAmountCents,
+    deliveryMode: order.deliveryMode ?? "address",
+    deliveryLat: order.deliveryLat,
+    deliveryLng: order.deliveryLng,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     customer: {
