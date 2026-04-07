@@ -22,6 +22,7 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
 
     // Inject Leaflet CSS once (avoids Turbopack static import issues)
     const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css";
@@ -34,6 +35,8 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
 
     // Dynamically import Leaflet to avoid SSR issues
     import("leaflet").then((L) => {
+      // StrictMode runs effects twice in dev — bail if this run was cancelled
+      if (cancelled || !containerRef.current || mapRef.current) return;
       // Fix default marker icon paths broken by webpack
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -82,6 +85,7 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
     });
 
     return () => {
+      cancelled = true;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
