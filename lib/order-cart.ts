@@ -78,6 +78,22 @@ export const drinks: MenuOption[] = [
   { id: "ice-tea", name: "Ice tea", price: 2.2 },
 ];
 
+export type BillingDetails = {
+  name: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+};
+
+export const initialBillingDetails: BillingDetails = {
+  name: "",
+  address: "",
+  city: "",
+  postalCode: "",
+  country: "AT",
+};
+
 export const initialCustomerDetails: CustomerDetails = {
   fullName: "",
   email: "",
