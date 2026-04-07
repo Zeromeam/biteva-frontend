@@ -116,18 +116,27 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
         maxZoom: 19,
       }).addTo(map);
 
-      // Critical: fixes tile loading in constrained containers
-      map.invalidateSize();
+      // Double rAF: wait for two browser paint cycles so the flex:1
+      // container has its real pixel dimensions before Leaflet computes
+      // the tile grid. Calling invalidateSize() too early causes the
+      // fragmented / offset tile rendering seen when the map is inside
+      // a flex layout that hasn't settled yet.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (cancelled || !mapRef.current) return;
+          mapRef.current.invalidateSize();
 
-      // Update geocode hint on every pan/zoom stop
-      map.on("moveend", () => {
-        if (!mapRef.current) return;
-        const { lat, lng } = mapRef.current.getCenter();
-        geocode(lat, lng);
+          // Register moveend only after size is correct
+          mapRef.current.on("moveend", () => {
+            if (!mapRef.current) return;
+            const { lat, lng } = mapRef.current.getCenter();
+            geocode(lat, lng);
+          });
+
+          // Fire geocode for initial position
+          geocode(initLat, initLng);
+        });
       });
-
-      // Fire geocode immediately for initial position
-      geocode(initLat, initLng);
     });
 
     return () => {
