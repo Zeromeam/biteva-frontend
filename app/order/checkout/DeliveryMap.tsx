@@ -116,27 +116,19 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
         maxZoom: 19,
       }).addTo(map);
 
-      // Double rAF: wait for two browser paint cycles so the flex:1
-      // container has its real pixel dimensions before Leaflet computes
-      // the tile grid. Calling invalidateSize() too early causes the
-      // fragmented / offset tile rendering seen when the map is inside
-      // a flex layout that hasn't settled yet.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (cancelled || !mapRef.current) return;
-          mapRef.current.invalidateSize();
+      // The map div uses position:absolute inset:0, so Leaflet gets
+      // correct pixel dimensions straight away — no timing hacks needed.
+      map.invalidateSize();
 
-          // Register moveend only after size is correct
-          mapRef.current.on("moveend", () => {
-            if (!mapRef.current) return;
-            const { lat, lng } = mapRef.current.getCenter();
-            geocode(lat, lng);
-          });
-
-          // Fire geocode for initial position
-          geocode(initLat, initLng);
-        });
+      // Register moveend to update the geocode hint on pan/zoom
+      map.on("moveend", () => {
+        if (!mapRef.current) return;
+        const { lat, lng } = mapRef.current.getCenter();
+        geocode(lat, lng);
       });
+
+      // Fire geocode for the initial position
+      geocode(initLat, initLng);
     });
 
     return () => {
@@ -262,8 +254,6 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
                 border-radius: 20px;
               }
             }
-            .delivery-map-container { width: 100%; height: 100%; }
-            .delivery-map-container .leaflet-container { width: 100% !important; height: 100% !important; }
           `}</style>
 
           <div className="delivery-modal-panel">
@@ -322,14 +312,16 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
               )}
             </div>
 
-            {/* Map area — flex:1 fills remaining height */}
-            <div style={{ flex: 1, position: "relative", overflow: "hidden", margin: "12px 0 0" }}>
+            {/* Map area — minHeight:0 lets the flex child shrink; position:relative
+                 is the containing block for the absolutely-positioned map div */}
+            <div style={{ flex: 1, position: "relative", overflow: "hidden", margin: "12px 0 0", minHeight: 0 }}>
 
-              {/* Leaflet container */}
+              {/* position:absolute inset:0 gives Leaflet real pixel dimensions
+                   immediately — unlike height:100% which requires an explicitly-
+                   sized ancestor and fails inside flex:1 containers */}
               <div
                 ref={mapContainerRef}
-                className="delivery-map-container"
-                style={{ width: "100%", height: "100%" }}
+                style={{ position: "absolute", inset: 0 }}
               />
 
               {/* Center crosshair pin — CSS only, no Leaflet marker */}
