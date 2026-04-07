@@ -53,6 +53,9 @@ model Order {
   shippingCity         String?
   shippingPostalCode   String?
   shippingCountry      String?
+  deliveryMode         String?
+  deliveryLat          Float?
+  deliveryLng          Float?
   stripePaymentIntentId String?     @unique
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt

@@ -151,18 +151,37 @@ const itemSchema = z.object({
 
 const createOrderSchema = z.object({
   items: z.array(itemSchema).min(1, "Cart is empty"),
+  deliveryMode: z.enum(["address", "gps"]).default("address"),
+  deliveryLat: z.number().optional(),
+  deliveryLng: z.number().optional(),
   customer: z.object({
     fullName: z.string().trim().min(1, "Full name is required"),
     email: z.string().trim().optional(),
     phone: z.string().trim().min(1, "Phone is required"),
-    address: z.string().trim().min(1, "Address is required"),
-    city: z.string().trim().min(1, "City is required"),
-    postalCode: z.string().trim().min(1, "Postal code is required"),
+    address: z.string().trim().optional(),
+    city: z.string().trim().optional(),
+    postalCode: z.string().trim().optional(),
     country: z.string().trim().default("AT"),
     note: z.string().optional(),
   }),
   subtotal: z.number(),
   stripePaymentIntentId: z.string().optional(),
+}).superRefine((val, ctx) => {
+  if (val.deliveryMode === "address") {
+    if (!val.customer.address?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Address is required", path: ["customer", "address"] });
+    }
+    if (!val.customer.city?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "City is required", path: ["customer", "city"] });
+    }
+    if (!val.customer.postalCode?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Postal code is required", path: ["customer", "postalCode"] });
+    }
+  } else {
+    if (!val.deliveryLat || !val.deliveryLng) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "GPS coordinates are required for GPS delivery", path: ["deliveryLat"] });
+    }
+  }
 });
 
 export async function POST(request: Request) {
@@ -235,12 +254,15 @@ export async function POST(request: Request) {
           currency: "EUR",
           totalAmountCents,
           customerId: customer.id,
+          deliveryMode: data.deliveryMode,
+          deliveryLat: data.deliveryLat ?? null,
+          deliveryLng: data.deliveryLng ?? null,
           shippingFullName: data.customer.fullName,
           shippingEmail: data.customer.email ?? null,
           shippingPhone: data.customer.phone,
-          shippingAddressLine1: data.customer.address,
-          shippingCity: data.customer.city,
-          shippingPostalCode: data.customer.postalCode,
+          shippingAddressLine1: data.customer.address ?? null,
+          shippingCity: data.customer.city ?? null,
+          shippingPostalCode: data.customer.postalCode ?? null,
           shippingCountry: data.customer.country,
           stripePaymentIntentId: data.stripePaymentIntentId ?? null,
           items: {

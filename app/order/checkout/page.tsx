@@ -1,8 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  BillingDetails,
   CartItem,
   clearCart,
   CustomerDetails,
@@ -10,6 +12,7 @@ import {
   getCartCount,
   getCartSubtotal,
   getItemUnitPrice,
+  initialBillingDetails,
   initialCustomerDetails,
   loadCart,
   removeCartItem,
@@ -28,6 +31,13 @@ import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
+// Dynamically import the map component to avoid SSR issues
+const DeliveryMap = dynamic(() => import("./DeliveryMap"), { ssr: false, loading: () => (
+  <div style={{ height: "300px", borderRadius: "14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5550", fontSize: "14px" }}>
+    Loading map…
+  </div>
+) });
+
 const BagIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -41,6 +51,9 @@ const BagIcon = ({ size = 18 }: { size?: number }) => (
 interface PaymentSectionProps {
   cart: CartItem[];
   details: CustomerDetails;
+  billing: BillingDetails;
+  deliveryMode: "address" | "gps";
+  gpsCoords: { lat: number; lng: number } | null;
   subtotalCents: number;
   onValidationError: (msg: string) => void;
   onSuccess: (orderNumber: string) => void;
@@ -53,6 +66,8 @@ async function createOrder(
   details: CustomerDetails,
   subtotalCents: number,
   paymentIntentId: string,
+  deliveryMode: "address" | "gps",
+  gpsCoords: { lat: number; lng: number } | null,
 ): Promise<{ ok: true; orderNumber: string } | { ok: false; error: string }> {
   try {
     const res = await fetch("/api/orders", {
@@ -69,6 +84,10 @@ async function createOrder(
           unitPrice: getItemUnitPrice(item),
           totalPrice: getItemUnitPrice(item) * item.quantity,
         })),
+        deliveryMode,
+        ...(deliveryMode === "gps" && gpsCoords
+          ? { deliveryLat: gpsCoords.lat, deliveryLng: gpsCoords.lng }
+          : {}),
         customer: details,
         subtotal: subtotalCents / 100,
         stripePaymentIntentId: paymentIntentId,
@@ -82,8 +101,7 @@ async function createOrder(
   }
 }
 
-/** Shared helper — creates a PaymentIntent on the server and returns the clientSecret.
- *  Pass cardOnly=true for the card form (excludes Stripe Link and local methods). */
+/** Shared helper — creates a PaymentIntent on the server and returns the clientSecret. */
 async function fetchClientSecret(amountCents: number, cardOnly = false): Promise<string | null> {
   try {
     const res = await fetch("/api/payment-intent", {
@@ -103,13 +121,16 @@ async function fetchClientSecret(amountCents: number, cardOnly = false): Promise
 interface CardFormProps {
   cart: CartItem[];
   details: CustomerDetails;
+  billing: BillingDetails;
+  deliveryMode: "address" | "gps";
+  gpsCoords: { lat: number; lng: number } | null;
   subtotalCents: number;
   clientSecret: string;
   onSuccess: (orderNumber: string) => void;
   onError: (msg: string) => void;
 }
 
-function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onError }: CardFormProps) {
+function CardForm({ cart, details, billing, deliveryMode, gpsCoords, subtotalCents, clientSecret, onSuccess, onError }: CardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isPaying, setIsPaying] = useState(false);
@@ -130,14 +151,14 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
           return_url: `${window.location.origin}/order/checkout`,
           payment_method_data: {
             billing_details: {
-              name: details.fullName,
+              name: billing.name,
               phone: details.phone,
               email: details.email || undefined,
               address: {
-                line1: details.address,
-                city: details.city,
-                postal_code: details.postalCode,
-                country: details.country || "AT",
+                line1: billing.address,
+                city: billing.city,
+                postal_code: billing.postalCode,
+                country: billing.country || "AT",
                 state: "",
               },
             },
@@ -149,7 +170,7 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
       if (error) { onError(error.message ?? "Payment failed."); return; }
       if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
 
-      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id);
+      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id, deliveryMode, gpsCoords);
       if (!result.ok) { onError(result.error); return; }
       clearCart();
       onSuccess(result.orderNumber);
@@ -195,14 +216,13 @@ function CardForm({ cart, details, subtotalCents, clientSecret, onSuccess, onErr
   );
 }
 
-function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuccess, onError }: PaymentSectionProps) {
-  const stripe = useStripe();   // outer Elements — used for Express Checkout only
+function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subtotalCents, onValidationError, onSuccess, onError }: PaymentSectionProps) {
+  const stripe = useStripe();
   const elements = useElements();
   const [showCardForm, setShowCardForm] = useState(false);
   const [isLoadingCard, setIsLoadingCard] = useState(false);
   const [cardClientSecret, setCardClientSecret] = useState<string | null>(null);
 
-  // Reset card form if cart total changes
   useEffect(() => {
     setShowCardForm(false);
     setCardClientSecret(null);
@@ -210,10 +230,28 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
 
   const validate = (): boolean => {
     if (cart.length === 0) { onValidationError("Your cart is empty."); return false; }
-    if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim() || !details.city.trim() || !details.postalCode.trim()) {
-      onValidationError("Please fill in your name, phone, address, city, and postal code.");
+
+    if (deliveryMode === "address") {
+      if (!details.fullName.trim() || !details.phone.trim() || !details.address.trim() || !details.city.trim() || !details.postalCode.trim()) {
+        onValidationError("Please fill in your name, phone, address, city, and postal code.");
+        return false;
+      }
+    } else {
+      if (!details.fullName.trim() || !details.phone.trim()) {
+        onValidationError("Please fill in your name and phone number.");
+        return false;
+      }
+      if (!gpsCoords) {
+        onValidationError("Please pin your location on the map before paying.");
+        return false;
+      }
+    }
+
+    if (!billing.name.trim() || !billing.address.trim() || !billing.city.trim() || !billing.postalCode.trim()) {
+      onValidationError("Please fill in the billing name, street, city, and postal code.");
       return false;
     }
+
     return true;
   };
 
@@ -222,7 +260,6 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
     if (!stripe || !elements) return;
     if (!validate()) { event.paymentFailed({ reason: "fail" }); return; }
 
-    // cardOnly=false so Apple Pay / Google Pay are included
     const clientSecret = await fetchClientSecret(subtotalCents, false);
     if (!clientSecret) { event.paymentFailed({ reason: "fail" }); onError("Could not start payment."); return; }
 
@@ -233,14 +270,14 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
         return_url: `${window.location.origin}/order/checkout`,
         payment_method_data: {
           billing_details: {
-            name: details.fullName,
+            name: billing.name,
             phone: details.phone,
             email: details.email || undefined,
             address: {
-              line1: details.address,
-              city: details.city,
-              postal_code: details.postalCode,
-              country: details.country || "AT",
+              line1: billing.address,
+              city: billing.city,
+              postal_code: billing.postalCode,
+              country: billing.country || "AT",
             },
           },
         },
@@ -251,21 +288,17 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
     if (error) { onError(error.message ?? "Payment failed."); return; }
     if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
 
-    const result = await createOrder(cart, details, subtotalCents, paymentIntent.id);
+    const result = await createOrder(cart, details, subtotalCents, paymentIntent.id, deliveryMode, gpsCoords);
     if (!result.ok) { onError(result.error); return; }
     clearCart();
     onSuccess(result.orderNumber);
   };
 
-  // ── Card form toggle — creates a card-only PI upfront ────────────────────
+  // ── Card form toggle ────────────────────────────────────────────────────
   const handleToggleCard = async () => {
-    if (showCardForm) {
-      setShowCardForm(false);
-      return;
-    }
+    if (showCardForm) { setShowCardForm(false); return; }
+    if (!validate()) return;
     setIsLoadingCard(true);
-    // cardOnly=true creates a PI with payment_method_types: ['card']
-    // which excludes Stripe Link entirely at the server level
     const secret = await fetchClientSecret(subtotalCents, true);
     setIsLoadingCard(false);
     if (!secret) { onError("Could not start card payment."); return; }
@@ -280,8 +313,6 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-
-      {/* Apple Pay / Google Pay — only renders if the browser supports it */}
       <ExpressCheckoutElement
         onConfirm={handleExpressConfirm}
         options={{
@@ -290,7 +321,6 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
         }}
       />
 
-      {/* Toggle: Pay with card */}
       <button
         type="button"
         onClick={handleToggleCard}
@@ -314,12 +344,14 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
         {isLoadingCard ? "Loading…" : "Pay with card"}
       </button>
 
-      {/* Card form — own Elements instance backed by a card-only PI (no Stripe Link) */}
       {showCardForm && cardClientSecret && (
         <Elements stripe={stripePromise} options={{ clientSecret: cardClientSecret, appearance: cardAppearance }}>
           <CardForm
             cart={cart}
             details={details}
+            billing={billing}
+            deliveryMode={deliveryMode}
+            gpsCoords={gpsCoords}
             subtotalCents={subtotalCents}
             clientSecret={cardClientSecret}
             onSuccess={(orderNumber) => { onSuccess(orderNumber); }}
@@ -331,6 +363,70 @@ function PaymentSection({ cart, details, subtotalCents, onValidationError, onSuc
   );
 }
 
+// ── Billing address form ──────────────────────────────────────────────────────
+
+interface BillingFormProps {
+  billing: BillingDetails;
+  onChange: (field: keyof BillingDetails, value: string) => void;
+}
+
+function BillingForm({ billing, onChange }: BillingFormProps) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div>
+        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Cardholder name</label>
+        <input
+          className="checkout-input"
+          value={billing.name}
+          onChange={(e) => onChange("name", e.target.value)}
+          placeholder="Name on card"
+        />
+      </div>
+      <div>
+        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Street address</label>
+        <input
+          className="checkout-input"
+          value={billing.address}
+          onChange={(e) => onChange("address", e.target.value)}
+          placeholder="Street, building, door"
+        />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <div>
+          <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>City</label>
+          <input
+            className="checkout-input"
+            value={billing.city}
+            onChange={(e) => onChange("city", e.target.value)}
+            placeholder="Vienna"
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Postal code</label>
+          <input
+            className="checkout-input"
+            value={billing.postalCode}
+            onChange={(e) => onChange("postalCode", e.target.value)}
+            placeholder="1010"
+          />
+        </div>
+      </div>
+      <div>
+        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+          Country <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(ISO code)</span>
+        </label>
+        <input
+          className="checkout-input"
+          value={billing.country}
+          onChange={(e) => onChange("country", e.target.value.toUpperCase().slice(0, 2))}
+          placeholder="AT"
+          maxLength={2}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Main checkout page ────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
@@ -338,6 +434,27 @@ export default function CheckoutPage() {
   const [details, setDetails] = useState<CustomerDetails>(initialCustomerDetails);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Delivery mode
+  const [deliveryMode, setDeliveryMode] = useState<"address" | "gps">("address");
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Billing
+  const [billingSameAsDelivery, setBillingSameAsDelivery] = useState(true);
+  const [billingDetails, setBillingDetails] = useState<BillingDetails>(initialBillingDetails);
+
+  const effectiveBilling = useMemo<BillingDetails>(() => {
+    if (deliveryMode === "address" && billingSameAsDelivery) {
+      return {
+        name: details.fullName,
+        address: details.address,
+        city: details.city,
+        postalCode: details.postalCode,
+        country: details.country,
+      };
+    }
+    return billingDetails;
+  }, [deliveryMode, billingSameAsDelivery, details, billingDetails]);
 
   useEffect(() => {
     const syncCart = () => setCart(loadCart());
@@ -353,6 +470,10 @@ export default function CheckoutPage() {
     setDetails((current) => ({ ...current, [field]: value }));
   };
 
+  const updateBillingDetails = (field: keyof BillingDetails, value: string) => {
+    setBillingDetails((prev) => ({ ...prev, [field]: value }));
+  };
+
   const changeQuantity = (cartId: string, quantity: number) => {
     updateCartItemQuantity(cartId, quantity);
     setCart(loadCart());
@@ -361,6 +482,14 @@ export default function CheckoutPage() {
   const removeItem = (cartId: string) => {
     removeCartItem(cartId);
     setCart(loadCart());
+  };
+
+  const handleSwitchMode = (mode: "address" | "gps") => {
+    setDeliveryMode(mode);
+    setErrorMessage(null);
+    if (mode === "address") {
+      setBillingSameAsDelivery(true);
+    }
   };
 
   return (
@@ -475,7 +604,6 @@ export default function CheckoutPage() {
                   style={{ borderRadius: "22px", border: "1px solid rgba(255,255,255,0.07)", background: "#0c0c0c", padding: "22px 24px" }}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                    {/* Product name badge */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                       <span style={{ display: "inline-block", padding: "6px 16px", borderRadius: "99px", border: "1px solid rgba(217,158,79,0.3)", background: "rgba(217,158,79,0.07)", fontSize: "13px", fontWeight: 600, color: "#D99E4F", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                         {item.product.name}
@@ -485,44 +613,18 @@ export default function CheckoutPage() {
                       </p>
                     </div>
 
-                    {/* Customisations */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", color: "#5a5550", lineHeight: 1.5 }}>
-                      <p style={{ margin: 0 }}>
-                        Side: <span style={{ color: "#9a9290" }}>{item.side?.name ?? "No side"}</span>
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        Sauces:{" "}
-                        <span style={{ color: "#9a9290" }}>
-                          {item.sauces.length > 0 ? item.sauces.map((s) => s.name).join(", ") : "No sauce"}
-                        </span>
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        Drink: <span style={{ color: "#9a9290" }}>{item.drink?.name ?? "No drink"}</span>
-                      </p>
+                      <p style={{ margin: 0 }}>Side: <span style={{ color: "#9a9290" }}>{item.side?.name ?? "No side"}</span></p>
+                      <p style={{ margin: 0 }}>Sauces: <span style={{ color: "#9a9290" }}>{item.sauces.length > 0 ? item.sauces.map((s) => s.name).join(", ") : "No sauce"}</span></p>
+                      <p style={{ margin: 0 }}>Drink: <span style={{ color: "#9a9290" }}>{item.drink?.name ?? "No drink"}</span></p>
                     </div>
 
-                    {/* Controls */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-                      {/* Quantity */}
                       <div style={{ display: "flex", alignItems: "center", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", overflow: "hidden" }}>
-                        <button
-                          type="button"
-                          onClick={() => changeQuantity(item.cartId, item.quantity - 1)}
-                          style={{ width: "38px", height: "38px", display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", color: item.quantity <= 1 ? "#333" : "#777", fontSize: "18px", cursor: item.quantity <= 1 ? "not-allowed" : "pointer", fontWeight: 300, lineHeight: 1 }}
-                          aria-label="Decrease quantity"
-                        >−</button>
-                        <span style={{ width: "34px", textAlign: "center", fontSize: "15px", fontWeight: 600, color: "#fff", lineHeight: "38px" }}>
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => changeQuantity(item.cartId, item.quantity + 1)}
-                          style={{ width: "38px", height: "38px", display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", color: "#777", fontSize: "18px", cursor: "pointer", fontWeight: 300, lineHeight: 1 }}
-                          aria-label="Increase quantity"
-                        >+</button>
+                        <button type="button" onClick={() => changeQuantity(item.cartId, item.quantity - 1)} style={{ width: "38px", height: "38px", display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", color: item.quantity <= 1 ? "#333" : "#777", fontSize: "18px", cursor: item.quantity <= 1 ? "not-allowed" : "pointer", fontWeight: 300, lineHeight: 1 }} aria-label="Decrease quantity">−</button>
+                        <span style={{ width: "34px", textAlign: "center", fontSize: "15px", fontWeight: 600, color: "#fff", lineHeight: "38px" }}>{item.quantity}</span>
+                        <button type="button" onClick={() => changeQuantity(item.cartId, item.quantity + 1)} style={{ width: "38px", height: "38px", display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", color: "#777", fontSize: "18px", cursor: "pointer", fontWeight: 300, lineHeight: 1 }} aria-label="Increase quantity">+</button>
                       </div>
-
-                      {/* Remove */}
                       <button
                         type="button"
                         onClick={() => removeItem(item.cartId)}
@@ -545,99 +647,142 @@ export default function CheckoutPage() {
             {/* Customer details */}
             <div style={{ borderRadius: "22px", border: "1px solid rgba(255,255,255,0.07)", background: "#0c0c0c", padding: "24px" }}>
               <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "22px", fontWeight: 600, color: "#fff", margin: "0 0 4px" }}>Delivery details</h2>
-              <p style={{ fontSize: "13px", color: "#5a5550", margin: "0 0 20px", lineHeight: 1.5 }}>We&apos;ll deliver your order to the address below.</p>
+              <p style={{ fontSize: "13px", color: "#5a5550", margin: "0 0 20px", lineHeight: 1.5 }}>How and where should we deliver your order?</p>
+
+              {/* Mode toggle */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode("address")}
+                  style={{
+                    flex: 1, padding: "10px 16px", borderRadius: "12px", border: deliveryMode === "address" ? "1px solid rgba(217,158,79,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                    background: deliveryMode === "address" ? "rgba(217,158,79,0.08)" : "rgba(255,255,255,0.02)",
+                    color: deliveryMode === "address" ? "#D99E4F" : "#5a5550",
+                    fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "13px", fontWeight: 600,
+                    cursor: "pointer", transition: "all 0.2s",
+                  }}
+                >
+                  Enter address
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode("gps")}
+                  style={{
+                    flex: 1, padding: "10px 16px", borderRadius: "12px", border: deliveryMode === "gps" ? "1px solid rgba(217,158,79,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                    background: deliveryMode === "gps" ? "rgba(217,158,79,0.08)" : "rgba(255,255,255,0.02)",
+                    color: deliveryMode === "gps" ? "#D99E4F" : "#5a5550",
+                    fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "13px", fontWeight: 600,
+                    cursor: "pointer", transition: "all 0.2s",
+                  }}
+                >
+                  📍 GPS location
+                </button>
+              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {/* Contact fields — always shown */}
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Full name</label>
-                  <input
-                    className="checkout-input"
-                    value={details.fullName}
-                    onChange={(e) => updateDetails("fullName", e.target.value)}
-                    placeholder="Your full name"
-                  />
+                  <input className="checkout-input" value={details.fullName} onChange={(e) => updateDetails("fullName", e.target.value)} placeholder="Your full name" />
                 </div>
-
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Phone</label>
-                  <input
-                    className="checkout-input"
-                    value={details.phone}
-                    onChange={(e) => updateDetails("phone", e.target.value)}
-                    placeholder="Your phone number"
-                  />
+                  <input className="checkout-input" value={details.phone} onChange={(e) => updateDetails("phone", e.target.value)} placeholder="Your phone number" />
                 </div>
-
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
                     Email <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional — for receipt)</span>
                   </label>
-                  <input
-                    className="checkout-input"
-                    type="email"
-                    value={details.email}
-                    onChange={(e) => updateDetails("email", e.target.value)}
-                    placeholder="your@email.com"
-                  />
+                  <input className="checkout-input" type="email" value={details.email} onChange={(e) => updateDetails("email", e.target.value)} placeholder="your@email.com" />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Street address</label>
-                  <input
-                    className="checkout-input"
-                    value={details.address}
-                    onChange={(e) => updateDetails("address", e.target.value)}
-                    placeholder="Street, building, floor, door"
-                  />
-                </div>
+                {/* Address mode fields */}
+                {deliveryMode === "address" && (
+                  <>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Street address</label>
+                      <input className="checkout-input" value={details.address} onChange={(e) => updateDetails("address", e.target.value)} placeholder="Street, building, floor, door" />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>City</label>
+                        <input className="checkout-input" value={details.city} onChange={(e) => updateDetails("city", e.target.value)} placeholder="Vienna" />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Postal code</label>
+                        <input className="checkout-input" value={details.postalCode} onChange={(e) => updateDetails("postalCode", e.target.value)} placeholder="1010" />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                        Country <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(ISO code)</span>
+                      </label>
+                      <input className="checkout-input" value={details.country} onChange={(e) => updateDetails("country", e.target.value.toUpperCase().slice(0, 2))} placeholder="AT" maxLength={2} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                        Note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
+                      </label>
+                      <textarea className="checkout-textarea" rows={2} value={details.note} onChange={(e) => updateDetails("note", e.target.value)} placeholder="Anything we should know?" />
+                    </div>
+                  </>
+                )}
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>City</label>
-                    <input
-                      className="checkout-input"
-                      value={details.city}
-                      onChange={(e) => updateDetails("city", e.target.value)}
-                      placeholder="Vienna"
+                {/* GPS map mode */}
+                {deliveryMode === "gps" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <p style={{ fontSize: "13px", color: "#5a5550", margin: 0, lineHeight: 1.6 }}>
+                      Drag the pin on the map to your exact location. We&apos;ll deliver right to you.
+                    </p>
+                    <DeliveryMap
+                      coords={gpsCoords}
+                      onCoordsChange={setGpsCoords}
                     />
+                    {gpsCoords && (
+                      <p style={{ fontSize: "12px", color: "#525252", margin: 0 }}>
+                        Pinned: {gpsCoords.lat.toFixed(5)}, {gpsCoords.lng.toFixed(5)}
+                      </p>
+                    )}
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                        Location note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
+                      </label>
+                      <textarea className="checkout-textarea" rows={2} value={details.note} onChange={(e) => updateDetails("note", e.target.value)} placeholder="E.g. near the fountain, red bench…" />
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Postal code</label>
-                    <input
-                      className="checkout-input"
-                      value={details.postalCode}
-                      onChange={(e) => updateDetails("postalCode", e.target.value)}
-                      placeholder="1010"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
-                    Country <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(ISO code)</span>
-                  </label>
-                  <input
-                    className="checkout-input"
-                    value={details.country}
-                    onChange={(e) => updateDetails("country", e.target.value.toUpperCase().slice(0, 2))}
-                    placeholder="AT"
-                    maxLength={2}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
-                    Note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
-                  </label>
-                  <textarea
-                    className="checkout-textarea"
-                    rows={2}
-                    value={details.note}
-                    onChange={(e) => updateDetails("note", e.target.value)}
-                    placeholder="Anything we should know?"
-                  />
-                </div>
+                )}
               </div>
+
+              {/* Billing section */}
+              <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "22px 0" }} />
+
+              {deliveryMode === "address" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={billingSameAsDelivery}
+                      onChange={(e) => setBillingSameAsDelivery(e.target.checked)}
+                      style={{ width: "16px", height: "16px", accentColor: "#D99E4F", cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: "13px", color: "#9a9290", fontWeight: 500 }}>Billing address same as delivery</span>
+                  </label>
+                  {!billingSameAsDelivery && (
+                    <>
+                      <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "#525252", margin: 0 }}>Billing address</p>
+                      <BillingForm billing={billingDetails} onChange={updateBillingDetails} />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "#525252", margin: "0 0 4px" }}>Billing address</p>
+                    <p style={{ fontSize: "12px", color: "#3a3a3a", margin: 0 }}>Required for payment — GPS delivery has no postal address.</p>
+                  </div>
+                  <BillingForm billing={billingDetails} onChange={updateBillingDetails} />
+                </div>
+              )}
             </div>
 
             {/* Order total + payment */}
@@ -664,7 +809,6 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Stripe payment (Apple Pay / Google Pay + card form) */}
               {subtotalCents > 0 && (
                 <Elements
                   stripe={stripePromise}
@@ -685,6 +829,9 @@ export default function CheckoutPage() {
                   <PaymentSection
                     cart={cart}
                     details={details}
+                    billing={effectiveBilling}
+                    deliveryMode={deliveryMode}
+                    gpsCoords={gpsCoords}
                     subtotalCents={subtotalCents}
                     onValidationError={(msg) => setErrorMessage(msg)}
                     onSuccess={(orderNumber) => {
