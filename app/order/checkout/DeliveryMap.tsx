@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import "leaflet/dist/leaflet.css";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 
 interface DeliveryMapProps {
@@ -23,6 +22,15 @@ export default function DeliveryMap({ coords, onCoordsChange }: DeliveryMapProps
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+
+    // Inject Leaflet CSS once (avoids Turbopack static import issues)
+    const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css";
+    if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = LEAFLET_CSS;
+      document.head.appendChild(link);
+    }
 
     // Dynamically import Leaflet to avoid SSR issues
     import("leaflet").then((L) => {
