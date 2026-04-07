@@ -33,8 +33,8 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 // Dynamically import the map component to avoid SSR issues
 const DeliveryMap = dynamic(() => import("./DeliveryMap"), { ssr: false, loading: () => (
-  <div style={{ height: "300px", borderRadius: "14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5550", fontSize: "14px" }}>
-    Loading map…
+  <div style={{ height: "52px", borderRadius: "14px", background: "rgba(255,255,255,0.03)", border: "1.5px solid #D99E4F", display: "flex", alignItems: "center", justifyContent: "center", color: "#D99E4F", fontSize: "14px" }}>
+    Loading…
   </div>
 ) });
 
@@ -730,19 +730,11 @@ export default function CheckoutPage() {
 
                 {/* GPS map mode */}
                 {deliveryMode === "gps" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <p style={{ fontSize: "13px", color: "#5a5550", margin: 0, lineHeight: 1.6 }}>
-                      Drag the pin on the map to your exact location. We&apos;ll deliver right to you.
-                    </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                     <DeliveryMap
                       coords={gpsCoords}
                       onCoordsChange={setGpsCoords}
                     />
-                    {gpsCoords && (
-                      <p style={{ fontSize: "12px", color: "#525252", margin: 0 }}>
-                        Pinned: {gpsCoords.lat.toFixed(5)}, {gpsCoords.lng.toFixed(5)}
-                      </p>
-                    )}
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
                         Location note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
