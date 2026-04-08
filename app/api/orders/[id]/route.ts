@@ -88,11 +88,33 @@ export async function GET(
 
     const order = await prisma.order.findUnique({
       where: { id },
-      include: {
-        customer: true,
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        currency: true,
+        totalAmountCents: true,
+        deliveryMode: true,
+        deliveryLat: true,
+        deliveryLng: true,
+        shippingFullName: true,
+        shippingEmail: true,
+        shippingPhone: true,
+        shippingAddressLine1: true,
+        shippingAddressLine2: true,
+        shippingCity: true,
+        shippingPostalCode: true,
+        shippingCountry: true,
+        createdAt: true,
+        updatedAt: true,
+        customer: { select: { fullName: true, email: true, phone: true } },
         items: {
-          include: {
-            product: true,
+          select: {
+            id: true,
+            quantity: true,
+            unitPriceCents: true,
+            lineTotalCents: true,
+            product: { select: { name: true, slug: true } },
           },
         },
       },
@@ -143,9 +165,35 @@ export async function PATCH(
       prisma.order.update({
         where: { id },
         data: { status: data.status },
-        include: {
-          customer: true,
-          items: { include: { product: true } },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          currency: true,
+          totalAmountCents: true,
+          deliveryMode: true,
+          deliveryLat: true,
+          deliveryLng: true,
+          shippingFullName: true,
+          shippingEmail: true,
+          shippingPhone: true,
+          shippingAddressLine1: true,
+          shippingAddressLine2: true,
+          shippingCity: true,
+          shippingPostalCode: true,
+          shippingCountry: true,
+          createdAt: true,
+          updatedAt: true,
+          customer: { select: { fullName: true, email: true, phone: true } },
+          items: {
+            select: {
+              id: true,
+              quantity: true,
+              unitPriceCents: true,
+              lineTotalCents: true,
+              product: { select: { name: true, slug: true } },
+            },
+          },
         },
       }),
       // Restore stock when cancelled
