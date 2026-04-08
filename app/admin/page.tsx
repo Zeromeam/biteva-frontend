@@ -531,19 +531,17 @@ export default function AdminOrdersPage() {
                 {selectedOrder.deliveryMode === "gps" && selectedOrder.deliveryLat != null && selectedOrder.deliveryLng != null ? (
                   <>
                     <p style={{ fontSize: "12px", color: "#D99E4F", fontWeight: 600, marginBottom: "8px" }}>GPS Pin</p>
-                    <a
-                      href={`https://www.google.com/maps?q=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ display: "block", borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}
-                    >
-                      {/* Static map preview via OpenStreetMap */}
-                      <img
-                        src={`https://staticmap.openstreetmap.de/staticmap.php?center=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng}&zoom=16&size=400x200&markers=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng},ol-marker`}
-                        alt="Delivery location map"
-                        style={{ width: "100%", height: "auto", display: "block" }}
+                    {/* OSM embed — works without any API key */}
+                    <div style={{ borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", height: "200px" }}>
+                      <iframe
+                        title="Delivery location"
+                        width="100%"
+                        height="200"
+                        style={{ border: 0, display: "block" }}
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedOrder.deliveryLng - 0.005},${selectedOrder.deliveryLat - 0.003},${selectedOrder.deliveryLng + 0.005},${selectedOrder.deliveryLat + 0.003}&layer=mapnik&marker=${selectedOrder.deliveryLat},${selectedOrder.deliveryLng}`}
+                        loading="lazy"
                       />
-                    </a>
+                    </div>
                     <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#888" }}>
                       {selectedOrder.deliveryLat.toFixed(6)}, {selectedOrder.deliveryLng.toFixed(6)}
                     </p>
@@ -553,7 +551,7 @@ export default function AdminOrdersPage() {
                       rel="noopener noreferrer"
                       style={{ display: "inline-block", marginTop: "6px", fontSize: "13px", color: "#D99E4F", fontWeight: 600, textDecoration: "underline" }}
                     >
-                      Open in Google Maps
+                      Open in Google Maps ↗
                     </a>
                   </>
                 ) : (
