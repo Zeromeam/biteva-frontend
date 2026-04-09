@@ -679,15 +679,16 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                {/* Contact fields — always shown */}
+              {/* ── Contact ─────────────────────────────────────── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#D99E4F" }}>Contact</p>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Full name</label>
                   <input className="checkout-input" value={details.fullName} onChange={(e) => updateDetails("fullName", e.target.value)} placeholder="Your full name" />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Phone</label>
-                  <input className="checkout-input" value={details.phone} onChange={(e) => updateDetails("phone", e.target.value)} placeholder="Your phone number" />
+                  <input className="checkout-input" value={details.phone} onChange={(e) => updateDetails("phone", e.target.value)} placeholder="+43 123 456 789" />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
@@ -695,61 +696,72 @@ export default function CheckoutPage() {
                   </label>
                   <input className="checkout-input" type="email" value={details.email} onChange={(e) => updateDetails("email", e.target.value)} placeholder="your@email.com" />
                 </div>
-
-                {/* Address mode fields */}
-                {deliveryMode === "address" && (
-                  <>
-                    <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Street address</label>
-                      <input className="checkout-input" value={details.address} onChange={(e) => updateDetails("address", e.target.value)} placeholder="Street, building, floor, door" />
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>City</label>
-                        <input className="checkout-input" value={details.city} onChange={(e) => updateDetails("city", e.target.value)} placeholder="Vienna" />
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Postal code</label>
-                        <input className="checkout-input" value={details.postalCode} onChange={(e) => updateDetails("postalCode", e.target.value)} placeholder="1010" />
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
-                        Country <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(ISO code)</span>
-                      </label>
-                      <input className="checkout-input" value={details.country} onChange={(e) => updateDetails("country", e.target.value.toUpperCase().slice(0, 2))} placeholder="AT" maxLength={2} />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
-                        Note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
-                      </label>
-                      <textarea className="checkout-textarea" rows={2} value={details.note} onChange={(e) => updateDetails("note", e.target.value)} placeholder="Anything we should know?" />
-                    </div>
-                  </>
-                )}
-
-                {/* GPS map mode */}
-                {deliveryMode === "gps" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    <DeliveryMap
-                      coords={gpsCoords}
-                      onCoordsChange={setGpsCoords}
-                    />
-                    <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
-                        Location note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
-                      </label>
-                      <textarea className="checkout-textarea" rows={2} value={details.note} onChange={(e) => updateDetails("note", e.target.value)} placeholder="E.g. near the fountain, red bench…" />
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Billing section */}
-              <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "22px 0" }} />
+              {/* ── Delivery address / GPS ───────────────────────── */}
+              <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "8px 0" }} />
 
               {deliveryMode === "address" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#D99E4F" }}>Delivery address</p>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Street & number</label>
+                    <input className="checkout-input" value={details.address} onChange={(e) => updateDetails("address", e.target.value)} placeholder="e.g. Mariahilfer Straße 42" />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "4px" }}>
+                      Apt / Floor / Door <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
+                    </label>
+                    <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#3a3a3a" }}>Staircase, floor, or door number if applicable</p>
+                    <input className="checkout-input" value={details.addressLine2} onChange={(e) => updateDetails("addressLine2", e.target.value)} placeholder="e.g. Stiege 2, Top 14" />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>City</label>
+                      <input className="checkout-input" value={details.city} onChange={(e) => updateDetails("city", e.target.value)} placeholder="Vienna" />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>Postal code</label>
+                      <input className="checkout-input" value={details.postalCode} onChange={(e) => updateDetails("postalCode", e.target.value)} placeholder="1060" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                      Country <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(2-letter code, e.g. AT)</span>
+                    </label>
+                    <input className="checkout-input" value={details.country} onChange={(e) => updateDetails("country", e.target.value.toUpperCase().slice(0, 2))} placeholder="AT" maxLength={2} />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                      Delivery note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
+                    </label>
+                    <textarea className="checkout-textarea" rows={2} value={details.note} onChange={(e) => updateDetails("note", e.target.value)} placeholder="Ring bell, leave at door, call on arrival…" />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#D99E4F" }}>Delivery location</p>
+                  <DeliveryMap coords={gpsCoords} onCoordsChange={setGpsCoords} />
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#525252", marginBottom: "8px" }}>
+                      Location note <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", color: "#3a3a3a", fontSize: "11px" }}>(optional)</span>
+                    </label>
+                    <textarea className="checkout-textarea" rows={2} value={details.note} onChange={(e) => updateDetails("note", e.target.value)} placeholder="E.g. near the fountain, red bench…" />
+                  </div>
+                </div>
+              )}
+
+              {/* ── Billing ─────────────────────────────────────── */}
+              <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "8px 0" }} />
+
+              {deliveryMode === "address" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#D99E4F" }}>Billing</p>
                   <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
                     <input
                       type="checkbox"
@@ -759,17 +771,12 @@ export default function CheckoutPage() {
                     />
                     <span style={{ fontSize: "13px", color: "#9a9290", fontWeight: 500 }}>Billing address same as delivery</span>
                   </label>
-                  {!billingSameAsDelivery && (
-                    <>
-                      <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "#525252", margin: 0 }}>Billing address</p>
-                      <BillingForm billing={billingDetails} onChange={updateBillingDetails} />
-                    </>
-                  )}
+                  {!billingSameAsDelivery && <BillingForm billing={billingDetails} onChange={updateBillingDetails} />}
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   <div>
-                    <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "#525252", margin: "0 0 4px" }}>Billing address</p>
+                    <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#D99E4F" }}>Billing address</p>
                     <p style={{ fontSize: "12px", color: "#3a3a3a", margin: 0 }}>Required for payment — GPS delivery has no postal address.</p>
                   </div>
                   <BillingForm billing={billingDetails} onChange={updateBillingDetails} />

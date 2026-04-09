@@ -26,6 +26,7 @@ export type CustomerDetails = {
   email: string;
   phone: string;
   address: string;
+  addressLine2: string;
   city: string;
   postalCode: string;
   country: string;
@@ -99,6 +100,7 @@ export const initialCustomerDetails: CustomerDetails = {
   email: "",
   phone: "",
   address: "",
+  addressLine2: "",
   city: "",
   postalCode: "",
   country: "AT",
