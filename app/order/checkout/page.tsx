@@ -955,7 +955,7 @@ export default function CheckoutPage() {
                 <div style={{ marginBottom: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(217,158,79,0.25)", background: "rgba(217,158,79,0.06)", fontSize: "13px", color: "#D99E4F", lineHeight: 1.5 }}>
                   🕐 Scheduled for{" "}
                   <strong>
-                    {new Intl.DateTimeFormat("de-AT", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(scheduledFor))}
+                    {new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(scheduledFor))}
                   </strong>
                 </div>
               )}

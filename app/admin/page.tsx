@@ -50,7 +50,7 @@ function formatEuro(cents: number) {
 }
 
 function formatDate(dateString: string) {
-  return new Intl.DateTimeFormat("en-AT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(dateString));
+  return new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(dateString));
 }
 
 function formatStatusLabel(status: OrderStatus) {
@@ -456,7 +456,7 @@ function ScheduledOrdersSection() {
     const map = new Map<string, OrderSummary[]>();
     for (const o of orders) {
       if (!o.scheduledFor) continue;
-      const label = new Intl.DateTimeFormat("en-AT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date(o.scheduledFor));
+      const label = new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(o.scheduledFor));
       if (!map.has(label)) map.set(label, []);
       map.get(label)!.push(o);
     }

@@ -62,7 +62,7 @@ export default async function AdminOrdersPage() {
                   {formatCentsAsEuro(order.totalAmountCents)}
                 </td>
                 <td className="px-4 py-3">
-                  {order.createdAt.toLocaleString("en-AT")}
+                  {new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(order.createdAt))}
                 </td>
               </tr>
             ))}
