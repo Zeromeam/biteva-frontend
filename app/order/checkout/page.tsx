@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BillingDetails,
   CartItem,
@@ -463,9 +463,9 @@ function DeliveryTimeSelector({
   onChange: (iso: string | null) => void;
 }) {
   const isScheduled = value !== null;
-  const [dateError, setDateError] = useState<string | null>(null);
 
   const today = new Date();
+
   const minDate = (() => {
     const lastSlotToday = new Date(today.toISOString().slice(0, 10) + `T${OPERATING_END - 1}:30:00`);
     const minTime = new Date(today.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
@@ -480,34 +480,46 @@ function DeliveryTimeSelector({
     return d.toISOString().slice(0, 10);
   })();
 
-  // Human-readable boundary labels for error messages
-  const minLabel = new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(minDate));
-  const maxLabel = new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(maxDate));
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
 
   const selectedDate = value ? value.slice(0, 10) : minDate;
   const selectedTime = value ? value.slice(11, 16) : "";
   const timeSlots = buildTimeSlots(selectedDate);
 
+  // ── DD.MM.YYYY segmented date input state ──
+  const [ddRaw, setDdRaw] = useState(() => selectedDate.slice(8));
+  const [mmRaw, setMmRaw] = useState(() => selectedDate.slice(5, 7));
+  const [yyyyRaw, setYyyyRaw] = useState(() => selectedDate.slice(0, 4));
+  const [dateError, setDateError] = useState<string | null>(null);
+  const refMm = useRef<HTMLInputElement>(null);
+  const refYyyy = useRef<HTMLInputElement>(null);
+
+  // Keep segments in sync when value changes externally (e.g. on toggle)
+  useEffect(() => {
+    setDdRaw(selectedDate.slice(8));
+    setMmRaw(selectedDate.slice(5, 7));
+    setYyyyRaw(selectedDate.slice(0, 4));
+    setDateError(null);
+  }, [selectedDate]);
+
+  function applyDate(dd: string, mm: string, yyyy: string) {
+    if (dd.length < 2 || mm.length < 2 || yyyy.length < 4) return; // not complete yet
+    const iso = `${yyyy}-${mm}-${dd}`;
+    const parsed = new Date(iso + "T00:00:00");
+    if (isNaN(parsed.getTime())) { setDateError("Invalid date"); return; }
+    if (iso < minDate) { setDateError(`Too early — from ${fmt(minDate)}`); return; }
+    if (iso > maxDate) { setDateError(`Too far ahead — until ${fmt(maxDate)}`); return; }
+    setDateError(null);
+    const slots = buildTimeSlots(iso);
+    const time = slots.length > 0 ? slots[0] : "12:00";
+    onChange(`${iso}T${time}:00+00:00`);
+  }
+
   function handleToggle(scheduled: boolean) {
     if (!scheduled) { setDateError(null); onChange(null); return; }
     const slots = buildTimeSlots(minDate);
     if (slots.length > 0) onChange(`${minDate}T${slots[0]}:00+00:00`);
-  }
-
-  function handleDateChange(raw: string) {
-    if (!raw) return;
-    if (raw < minDate) {
-      setDateError(`Too soon — earliest available date is ${minLabel}`);
-      return;
-    }
-    if (raw > maxDate) {
-      setDateError(`Too far ahead — latest available date is ${maxLabel}`);
-      return;
-    }
-    setDateError(null);
-    const slots = buildTimeSlots(raw);
-    const time = slots.length > 0 ? slots[0] : "12:00";
-    onChange(`${raw}T${time}:00+00:00`);
   }
 
   function handleTimeChange(time: string) {
@@ -517,6 +529,13 @@ function DeliveryTimeSelector({
   const labelStyle: React.CSSProperties = {
     display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em",
     textTransform: "uppercase", color: "#525252", marginBottom: "8px",
+  };
+
+  // Shared style for each segment input
+  const segStyle: React.CSSProperties = {
+    background: "transparent", border: "none", outline: "none",
+    color: "#e8e3de", fontSize: "15px", fontWeight: 500, padding: 0, margin: 0,
+    fontFamily: "'DM Sans', system-ui, sans-serif", textAlign: "center",
   };
 
   return (
@@ -549,61 +568,94 @@ function DeliveryTimeSelector({
       {isScheduled && (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {/* Date */}
+
+            {/* ── Segmented DD.MM.YYYY input ── */}
             <div>
               <label style={labelStyle}>Date</label>
-              <input
-                type="date"
+              {/* Outer box looks like checkout-input; inner inputs are invisible */}
+              <div
                 className="checkout-input"
-                value={selectedDate}
-                min={minDate}
-                max={maxDate}
-                onChange={(e) => handleDateChange(e.target.value)}
                 style={{
-                  colorScheme: "dark",
-                  border: dateError ? "1px solid rgba(239,68,68,0.6)" : undefined,
-                  outline: dateError ? "none" : undefined,
+                  display: "flex", alignItems: "center", gap: "1px", cursor: "text",
+                  border: dateError ? "1px solid rgba(239,68,68,0.55)" : undefined,
                 }}
-              />
+                onClick={(e) => (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.focus()}
+              >
+                {/* DD */}
+                <input
+                  style={{ ...segStyle, width: "26px" }}
+                  inputMode="numeric"
+                  maxLength={2}
+                  placeholder="TT"
+                  value={ddRaw}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                    setDdRaw(v);
+                    if (v.length === 2) refMm.current?.focus();
+                    applyDate(v, mmRaw, yyyyRaw);
+                  }}
+                />
+                <span style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: 1, userSelect: "none" }}>.</span>
+                {/* MM */}
+                <input
+                  ref={refMm}
+                  style={{ ...segStyle, width: "26px" }}
+                  inputMode="numeric"
+                  maxLength={2}
+                  placeholder="MM"
+                  value={mmRaw}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                    setMmRaw(v);
+                    if (v.length === 2) refYyyy.current?.focus();
+                    applyDate(ddRaw, v, yyyyRaw);
+                  }}
+                />
+                <span style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: 1, userSelect: "none" }}>.</span>
+                {/* YYYY */}
+                <input
+                  ref={refYyyy}
+                  style={{ ...segStyle, width: "44px" }}
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="JJJJ"
+                  value={yyyyRaw}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setYyyyRaw(v);
+                    applyDate(ddRaw, mmRaw, v);
+                  }}
+                />
+              </div>
             </div>
 
-            {/* Time — disabled when date has an error or no slots */}
+            {/* Time — disabled when date invalid or no slots */}
             <div>
-              <label style={{ ...labelStyle, color: dateError ? "#3a3a3a" : "#525252" }}>Time</label>
+              <label style={{ ...labelStyle, opacity: dateError ? 0.35 : 1 }}>Time</label>
               <select
                 className="checkout-input"
                 value={selectedTime}
                 disabled={!!dateError || timeSlots.length === 0}
                 onChange={(e) => handleTimeChange(e.target.value)}
                 style={{
-                  appearance: "none", cursor: dateError || timeSlots.length === 0 ? "not-allowed" : "pointer",
+                  appearance: "none",
+                  cursor: dateError || timeSlots.length === 0 ? "not-allowed" : "pointer",
                   opacity: dateError || timeSlots.length === 0 ? 0.35 : 1,
                 }}
               >
-                {timeSlots.length === 0 ? (
-                  <option value="">No slots available</option>
-                ) : (
-                  timeSlots.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))
-                )}
+                {timeSlots.length === 0
+                  ? <option value="">No slots available</option>
+                  : timeSlots.map((s) => <option key={s} value={s}>{s}</option>)
+                }
               </select>
             </div>
           </div>
 
-          {/* Inline error */}
-          {dateError && (
-            <p style={{ margin: 0, fontSize: "12px", color: "#ef4444", display: "flex", alignItems: "center", gap: "5px" }}>
-              <span>⚠</span> {dateError}
-            </p>
-          )}
-
-          {/* Helper hint when no error */}
-          {!dateError && (
-            <p style={{ margin: 0, fontSize: "11px", color: "#3a3a3a" }}>
-              Available {minLabel} – {maxLabel}
-            </p>
-          )}
+          {/* Error or hint */}
+          {dateError
+            ? <p style={{ margin: 0, fontSize: "12px", color: "#ef4444" }}>⚠ {dateError}</p>
+            : <p style={{ margin: 0, fontSize: "11px", color: "#3a3a3a" }}>Available {fmt(minDate)} – {fmt(maxDate)}</p>
+          }
         </div>
       )}
     </div>
