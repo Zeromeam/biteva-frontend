@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BillingDetails,
   CartItem,
@@ -455,6 +455,106 @@ function buildTimeSlots(selectedDate: string): string[] {
   return slots;
 }
 
+// Custom DD.MM.YYYY date input — avoids browser locale issues with type="date"
+function DateInput({
+  value,          // YYYY-MM-DD
+  min,            // YYYY-MM-DD
+  max,            // YYYY-MM-DD
+  onChange,       // called with YYYY-MM-DD when a valid date is entered
+}: {
+  value: string;
+  min: string;
+  max: string;
+  onChange: (date: string) => void;
+}) {
+  const [yy, mm, dd] = value.split("-");
+  const [dVal, setDVal] = useState(dd ?? "");
+  const [mVal, setMVal] = useState(mm ?? "");
+  const [yVal, setYVal] = useState(yy ?? "");
+
+  const refM = useRef<HTMLInputElement>(null);
+  const refY = useRef<HTMLInputElement>(null);
+
+  // Sync external value → local state
+  useEffect(() => {
+    const [ny, nm, nd] = value.split("-");
+    setDVal(nd ?? "");
+    setMVal(nm ?? "");
+    setYVal(ny ?? "");
+  }, [value]);
+
+  function tryEmit(d: string, m: string, y: string) {
+    if (d.length === 2 && m.length === 2 && y.length === 4) {
+      const iso = `${y}-${m}-${d}`;
+      const parsed = new Date(iso);
+      if (!isNaN(parsed.getTime()) && iso >= min && iso <= max) {
+        onChange(iso);
+      }
+    }
+  }
+
+  const seg: React.CSSProperties = {
+    width: "44px", textAlign: "center", background: "transparent", border: "none",
+    outline: "none", color: "#e8e3de", fontSize: "15px", fontWeight: 500,
+    fontFamily: "'DM Sans', system-ui, sans-serif", padding: "0",
+  };
+
+  const dot: React.CSSProperties = {
+    color: "#525252", fontSize: "15px", userSelect: "none", lineHeight: 1,
+  };
+
+  return (
+    <div
+      className="checkout-input"
+      style={{ display: "flex", alignItems: "center", gap: "2px", padding: "0 14px", cursor: "text" }}
+      onClick={() => { /* focus first empty */ }}
+    >
+      <input
+        style={seg}
+        placeholder="TT"
+        inputMode="numeric"
+        maxLength={2}
+        value={dVal}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+          setDVal(v);
+          if (v.length === 2) refM.current?.focus();
+          tryEmit(v, mVal, yVal);
+        }}
+      />
+      <span style={dot}>.</span>
+      <input
+        ref={refM}
+        style={seg}
+        placeholder="MM"
+        inputMode="numeric"
+        maxLength={2}
+        value={mVal}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+          setMVal(v);
+          if (v.length === 2) refY.current?.focus();
+          tryEmit(dVal, v, yVal);
+        }}
+      />
+      <span style={dot}>.</span>
+      <input
+        ref={refY}
+        style={{ ...seg, width: "56px" }}
+        placeholder="JJJJ"
+        inputMode="numeric"
+        maxLength={4}
+        value={yVal}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+          setYVal(v);
+          tryEmit(dVal, mVal, v);
+        }}
+      />
+    </div>
+  );
+}
+
 function DeliveryTimeSelector({
   value,
   onChange,
@@ -539,14 +639,11 @@ function DeliveryTimeSelector({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           <div>
             <label style={labelStyle}>Date</label>
-            <input
-              type="date"
-              className="checkout-input"
+            <DateInput
               value={selectedDate}
               min={minDate}
               max={maxDate}
-              onChange={(e) => handleDateChange(e.target.value)}
-              style={{ colorScheme: "dark" }}
+              onChange={handleDateChange}
             />
           </div>
           <div>
