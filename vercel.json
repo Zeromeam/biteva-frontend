@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/release-scheduled-orders",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/day-before-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/big-day-escalation",
+      "schedule": "0 20 * * *"
+    }
+  ]
+}

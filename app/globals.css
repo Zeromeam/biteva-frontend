@@ -439,6 +439,31 @@ select {
   color: #ffb0b0;
 }
 
+.status-badge--scheduled {
+  background: rgba(108, 142, 191, 0.15);
+  color: #9ab4d8;
+}
+
+.status-badge--released {
+  background: rgba(217, 158, 79, 0.15);
+  color: #D99E4F;
+}
+
+.status-badge--confirmed {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+}
+
+.status-badge--out-for-delivery {
+  background: rgba(108, 142, 191, 0.2);
+  color: #90b4e0;
+}
+
+.status-badge--delivered {
+  background: rgba(76, 175, 80, 0.2);
+  color: #a5d6a7;
+}
+
 .admin-detail-card {
   display: grid;
   gap: 1rem;

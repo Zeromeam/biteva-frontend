@@ -28,10 +28,14 @@ export type AggregateOrder = {
 
 export type OrderAvgAggregateOutputType = {
   totalAmountCents: number | null
+  deliveryLat: number | null
+  deliveryLng: number | null
 }
 
 export type OrderSumAggregateOutputType = {
   totalAmountCents: number | null
+  deliveryLat: number | null
+  deliveryLng: number | null
 }
 
 export type OrderMinAggregateOutputType = {
@@ -49,7 +53,16 @@ export type OrderMinAggregateOutputType = {
   shippingCity: string | null
   shippingPostalCode: string | null
   shippingCountry: string | null
+  deliveryMode: string | null
+  deliveryLat: number | null
+  deliveryLng: number | null
   stripePaymentIntentId: string | null
+  scheduledFor: Date | null
+  isScheduled: boolean | null
+  releasedAt: Date | null
+  restaurantNotifiedAt: Date | null
+  driverNote: string | null
+  customerNote: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -69,7 +82,16 @@ export type OrderMaxAggregateOutputType = {
   shippingCity: string | null
   shippingPostalCode: string | null
   shippingCountry: string | null
+  deliveryMode: string | null
+  deliveryLat: number | null
+  deliveryLng: number | null
   stripePaymentIntentId: string | null
+  scheduledFor: Date | null
+  isScheduled: boolean | null
+  releasedAt: Date | null
+  restaurantNotifiedAt: Date | null
+  driverNote: string | null
+  customerNote: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -89,7 +111,16 @@ export type OrderCountAggregateOutputType = {
   shippingCity: number
   shippingPostalCode: number
   shippingCountry: number
+  deliveryMode: number
+  deliveryLat: number
+  deliveryLng: number
   stripePaymentIntentId: number
+  scheduledFor: number
+  isScheduled: number
+  releasedAt: number
+  restaurantNotifiedAt: number
+  driverNote: number
+  customerNote: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -98,10 +129,14 @@ export type OrderCountAggregateOutputType = {
 
 export type OrderAvgAggregateInputType = {
   totalAmountCents?: true
+  deliveryLat?: true
+  deliveryLng?: true
 }
 
 export type OrderSumAggregateInputType = {
   totalAmountCents?: true
+  deliveryLat?: true
+  deliveryLng?: true
 }
 
 export type OrderMinAggregateInputType = {
@@ -119,7 +154,16 @@ export type OrderMinAggregateInputType = {
   shippingCity?: true
   shippingPostalCode?: true
   shippingCountry?: true
+  deliveryMode?: true
+  deliveryLat?: true
+  deliveryLng?: true
   stripePaymentIntentId?: true
+  scheduledFor?: true
+  isScheduled?: true
+  releasedAt?: true
+  restaurantNotifiedAt?: true
+  driverNote?: true
+  customerNote?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -139,7 +183,16 @@ export type OrderMaxAggregateInputType = {
   shippingCity?: true
   shippingPostalCode?: true
   shippingCountry?: true
+  deliveryMode?: true
+  deliveryLat?: true
+  deliveryLng?: true
   stripePaymentIntentId?: true
+  scheduledFor?: true
+  isScheduled?: true
+  releasedAt?: true
+  restaurantNotifiedAt?: true
+  driverNote?: true
+  customerNote?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -159,7 +212,16 @@ export type OrderCountAggregateInputType = {
   shippingCity?: true
   shippingPostalCode?: true
   shippingCountry?: true
+  deliveryMode?: true
+  deliveryLat?: true
+  deliveryLng?: true
   stripePaymentIntentId?: true
+  scheduledFor?: true
+  isScheduled?: true
+  releasedAt?: true
+  restaurantNotifiedAt?: true
+  driverNote?: true
+  customerNote?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -266,7 +328,16 @@ export type OrderGroupByOutputType = {
   shippingCity: string | null
   shippingPostalCode: string | null
   shippingCountry: string | null
+  deliveryMode: string | null
+  deliveryLat: number | null
+  deliveryLng: number | null
   stripePaymentIntentId: string | null
+  scheduledFor: Date | null
+  isScheduled: boolean
+  releasedAt: Date | null
+  restaurantNotifiedAt: Date | null
+  driverNote: string | null
+  customerNote: string | null
   createdAt: Date
   updatedAt: Date
   _count: OrderCountAggregateOutputType | null
@@ -309,11 +380,21 @@ export type OrderWhereInput = {
   shippingCity?: Prisma.StringNullableFilter<"Order"> | string | null
   shippingPostalCode?: Prisma.StringNullableFilter<"Order"> | string | null
   shippingCountry?: Prisma.StringNullableFilter<"Order"> | string | null
+  deliveryMode?: Prisma.StringNullableFilter<"Order"> | string | null
+  deliveryLat?: Prisma.FloatNullableFilter<"Order"> | number | null
+  deliveryLng?: Prisma.FloatNullableFilter<"Order"> | number | null
   stripePaymentIntentId?: Prisma.StringNullableFilter<"Order"> | string | null
+  scheduledFor?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  isScheduled?: Prisma.BoolFilter<"Order"> | boolean
+  releasedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  restaurantNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  driverNote?: Prisma.StringNullableFilter<"Order"> | string | null
+  customerNote?: Prisma.StringNullableFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   items?: Prisma.OrderItemListRelationFilter
+  statusHistory?: Prisma.OrderStatusHistoryListRelationFilter
 }
 
 export type OrderOrderByWithRelationInput = {
@@ -331,11 +412,21 @@ export type OrderOrderByWithRelationInput = {
   shippingCity?: Prisma.SortOrderInput | Prisma.SortOrder
   shippingPostalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   shippingCountry?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryMode?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrderInput | Prisma.SortOrder
   stripePaymentIntentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  scheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
+  isScheduled?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  restaurantNotifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  driverNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerNote?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
   items?: Prisma.OrderItemOrderByRelationAggregateInput
+  statusHistory?: Prisma.OrderStatusHistoryOrderByRelationAggregateInput
 }
 
 export type OrderWhereUniqueInput = Prisma.AtLeast<{
@@ -357,10 +448,20 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   shippingCity?: Prisma.StringNullableFilter<"Order"> | string | null
   shippingPostalCode?: Prisma.StringNullableFilter<"Order"> | string | null
   shippingCountry?: Prisma.StringNullableFilter<"Order"> | string | null
+  deliveryMode?: Prisma.StringNullableFilter<"Order"> | string | null
+  deliveryLat?: Prisma.FloatNullableFilter<"Order"> | number | null
+  deliveryLng?: Prisma.FloatNullableFilter<"Order"> | number | null
+  scheduledFor?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  isScheduled?: Prisma.BoolFilter<"Order"> | boolean
+  releasedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  restaurantNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  driverNote?: Prisma.StringNullableFilter<"Order"> | string | null
+  customerNote?: Prisma.StringNullableFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   items?: Prisma.OrderItemListRelationFilter
+  statusHistory?: Prisma.OrderStatusHistoryListRelationFilter
 }, "id" | "orderNumber" | "stripePaymentIntentId">
 
 export type OrderOrderByWithAggregationInput = {
@@ -378,7 +479,16 @@ export type OrderOrderByWithAggregationInput = {
   shippingCity?: Prisma.SortOrderInput | Prisma.SortOrder
   shippingPostalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   shippingCountry?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryMode?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrderInput | Prisma.SortOrder
   stripePaymentIntentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  scheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
+  isScheduled?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  restaurantNotifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  driverNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerNote?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.OrderCountOrderByAggregateInput
@@ -406,7 +516,16 @@ export type OrderScalarWhereWithAggregatesInput = {
   shippingCity?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   shippingPostalCode?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   shippingCountry?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  deliveryMode?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  deliveryLat?: Prisma.FloatNullableWithAggregatesFilter<"Order"> | number | null
+  deliveryLng?: Prisma.FloatNullableWithAggregatesFilter<"Order"> | number | null
   stripePaymentIntentId?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  scheduledFor?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  isScheduled?: Prisma.BoolWithAggregatesFilter<"Order"> | boolean
+  releasedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  restaurantNotifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  driverNote?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  customerNote?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
 }
@@ -425,11 +544,21 @@ export type OrderCreateInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutOrdersInput
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
+  statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
 }
 
 export type OrderUncheckedCreateInput = {
@@ -447,10 +576,20 @@ export type OrderUncheckedCreateInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
 }
 
 export type OrderUpdateInput = {
@@ -467,11 +606,21 @@ export type OrderUpdateInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutOrdersNestedInput
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderUncheckedUpdateInput = {
@@ -489,10 +638,20 @@ export type OrderUncheckedUpdateInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderCreateManyInput = {
@@ -510,7 +669,16 @@ export type OrderCreateManyInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -529,7 +697,16 @@ export type OrderUpdateManyMutationInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -549,7 +726,16 @@ export type OrderUncheckedUpdateManyInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -579,13 +765,24 @@ export type OrderCountOrderByAggregateInput = {
   shippingCity?: Prisma.SortOrder
   shippingPostalCode?: Prisma.SortOrder
   shippingCountry?: Prisma.SortOrder
+  deliveryMode?: Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrder
   stripePaymentIntentId?: Prisma.SortOrder
+  scheduledFor?: Prisma.SortOrder
+  isScheduled?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrder
+  restaurantNotifiedAt?: Prisma.SortOrder
+  driverNote?: Prisma.SortOrder
+  customerNote?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type OrderAvgOrderByAggregateInput = {
   totalAmountCents?: Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrder
 }
 
 export type OrderMaxOrderByAggregateInput = {
@@ -603,7 +800,16 @@ export type OrderMaxOrderByAggregateInput = {
   shippingCity?: Prisma.SortOrder
   shippingPostalCode?: Prisma.SortOrder
   shippingCountry?: Prisma.SortOrder
+  deliveryMode?: Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrder
   stripePaymentIntentId?: Prisma.SortOrder
+  scheduledFor?: Prisma.SortOrder
+  isScheduled?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrder
+  restaurantNotifiedAt?: Prisma.SortOrder
+  driverNote?: Prisma.SortOrder
+  customerNote?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -623,13 +829,24 @@ export type OrderMinOrderByAggregateInput = {
   shippingCity?: Prisma.SortOrder
   shippingPostalCode?: Prisma.SortOrder
   shippingCountry?: Prisma.SortOrder
+  deliveryMode?: Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrder
   stripePaymentIntentId?: Prisma.SortOrder
+  scheduledFor?: Prisma.SortOrder
+  isScheduled?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrder
+  restaurantNotifiedAt?: Prisma.SortOrder
+  driverNote?: Prisma.SortOrder
+  customerNote?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type OrderSumOrderByAggregateInput = {
   totalAmountCents?: Prisma.SortOrder
+  deliveryLat?: Prisma.SortOrder
+  deliveryLng?: Prisma.SortOrder
 }
 
 export type OrderScalarRelationFilter = {
@@ -683,6 +900,18 @@ export type EnumOrderStatusFieldUpdateOperationsInput = {
   set?: $Enums.OrderStatus
 }
 
+export type NullableFloatFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
 export type OrderCreateNestedOneWithoutItemsInput = {
   create?: Prisma.XOR<Prisma.OrderCreateWithoutItemsInput, Prisma.OrderUncheckedCreateWithoutItemsInput>
   connectOrCreate?: Prisma.OrderCreateOrConnectWithoutItemsInput
@@ -695,6 +924,20 @@ export type OrderUpdateOneRequiredWithoutItemsNestedInput = {
   upsert?: Prisma.OrderUpsertWithoutItemsInput
   connect?: Prisma.OrderWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrderUpdateToOneWithWhereWithoutItemsInput, Prisma.OrderUpdateWithoutItemsInput>, Prisma.OrderUncheckedUpdateWithoutItemsInput>
+}
+
+export type OrderCreateNestedOneWithoutStatusHistoryInput = {
+  create?: Prisma.XOR<Prisma.OrderCreateWithoutStatusHistoryInput, Prisma.OrderUncheckedCreateWithoutStatusHistoryInput>
+  connectOrCreate?: Prisma.OrderCreateOrConnectWithoutStatusHistoryInput
+  connect?: Prisma.OrderWhereUniqueInput
+}
+
+export type OrderUpdateOneRequiredWithoutStatusHistoryNestedInput = {
+  create?: Prisma.XOR<Prisma.OrderCreateWithoutStatusHistoryInput, Prisma.OrderUncheckedCreateWithoutStatusHistoryInput>
+  connectOrCreate?: Prisma.OrderCreateOrConnectWithoutStatusHistoryInput
+  upsert?: Prisma.OrderUpsertWithoutStatusHistoryInput
+  connect?: Prisma.OrderWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrderUpdateToOneWithWhereWithoutStatusHistoryInput, Prisma.OrderUpdateWithoutStatusHistoryInput>, Prisma.OrderUncheckedUpdateWithoutStatusHistoryInput>
 }
 
 export type OrderCreateWithoutCustomerInput = {
@@ -711,10 +954,20 @@ export type OrderCreateWithoutCustomerInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
+  statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
 }
 
 export type OrderUncheckedCreateWithoutCustomerInput = {
@@ -731,10 +984,20 @@ export type OrderUncheckedCreateWithoutCustomerInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
 }
 
 export type OrderCreateOrConnectWithoutCustomerInput = {
@@ -781,7 +1044,16 @@ export type OrderScalarWhereInput = {
   shippingCity?: Prisma.StringNullableFilter<"Order"> | string | null
   shippingPostalCode?: Prisma.StringNullableFilter<"Order"> | string | null
   shippingCountry?: Prisma.StringNullableFilter<"Order"> | string | null
+  deliveryMode?: Prisma.StringNullableFilter<"Order"> | string | null
+  deliveryLat?: Prisma.FloatNullableFilter<"Order"> | number | null
+  deliveryLng?: Prisma.FloatNullableFilter<"Order"> | number | null
   stripePaymentIntentId?: Prisma.StringNullableFilter<"Order"> | string | null
+  scheduledFor?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  isScheduled?: Prisma.BoolFilter<"Order"> | boolean
+  releasedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  restaurantNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  driverNote?: Prisma.StringNullableFilter<"Order"> | string | null
+  customerNote?: Prisma.StringNullableFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
 }
@@ -800,10 +1072,20 @@ export type OrderCreateWithoutItemsInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
 }
 
 export type OrderUncheckedCreateWithoutItemsInput = {
@@ -821,9 +1103,19 @@ export type OrderUncheckedCreateWithoutItemsInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
 }
 
 export type OrderCreateOrConnectWithoutItemsInput = {
@@ -856,10 +1148,20 @@ export type OrderUpdateWithoutItemsInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutOrdersNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderUncheckedUpdateWithoutItemsInput = {
@@ -877,9 +1179,155 @@ export type OrderUncheckedUpdateWithoutItemsInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
+}
+
+export type OrderCreateWithoutStatusHistoryInput = {
+  id?: string
+  orderNumber: string
+  status?: $Enums.OrderStatus
+  currency?: string
+  totalAmountCents: number
+  shippingFullName?: string | null
+  shippingEmail?: string | null
+  shippingPhone?: string | null
+  shippingAddressLine1?: string | null
+  shippingAddressLine2?: string | null
+  shippingCity?: string | null
+  shippingPostalCode?: string | null
+  shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
+  stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  customer: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
+}
+
+export type OrderUncheckedCreateWithoutStatusHistoryInput = {
+  id?: string
+  orderNumber: string
+  status?: $Enums.OrderStatus
+  currency?: string
+  totalAmountCents: number
+  customerId: string
+  shippingFullName?: string | null
+  shippingEmail?: string | null
+  shippingPhone?: string | null
+  shippingAddressLine1?: string | null
+  shippingAddressLine2?: string | null
+  shippingCity?: string | null
+  shippingPostalCode?: string | null
+  shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
+  stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
+}
+
+export type OrderCreateOrConnectWithoutStatusHistoryInput = {
+  where: Prisma.OrderWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrderCreateWithoutStatusHistoryInput, Prisma.OrderUncheckedCreateWithoutStatusHistoryInput>
+}
+
+export type OrderUpsertWithoutStatusHistoryInput = {
+  update: Prisma.XOR<Prisma.OrderUpdateWithoutStatusHistoryInput, Prisma.OrderUncheckedUpdateWithoutStatusHistoryInput>
+  create: Prisma.XOR<Prisma.OrderCreateWithoutStatusHistoryInput, Prisma.OrderUncheckedCreateWithoutStatusHistoryInput>
+  where?: Prisma.OrderWhereInput
+}
+
+export type OrderUpdateToOneWithWhereWithoutStatusHistoryInput = {
+  where?: Prisma.OrderWhereInput
+  data: Prisma.XOR<Prisma.OrderUpdateWithoutStatusHistoryInput, Prisma.OrderUncheckedUpdateWithoutStatusHistoryInput>
+}
+
+export type OrderUpdateWithoutStatusHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  totalAmountCents?: Prisma.IntFieldUpdateOperationsInput | number
+  shippingFullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingAddressLine1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingAddressLine2?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  customer?: Prisma.CustomerUpdateOneRequiredWithoutOrdersNestedInput
+  items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
+}
+
+export type OrderUncheckedUpdateWithoutStatusHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  totalAmountCents?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  shippingFullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingAddressLine1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingAddressLine2?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderCreateManyCustomerInput = {
@@ -896,7 +1344,16 @@ export type OrderCreateManyCustomerInput = {
   shippingCity?: string | null
   shippingPostalCode?: string | null
   shippingCountry?: string | null
+  deliveryMode?: string | null
+  deliveryLat?: number | null
+  deliveryLng?: number | null
   stripePaymentIntentId?: string | null
+  scheduledFor?: Date | string | null
+  isScheduled?: boolean
+  releasedAt?: Date | string | null
+  restaurantNotifiedAt?: Date | string | null
+  driverNote?: string | null
+  customerNote?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -915,10 +1372,20 @@ export type OrderUpdateWithoutCustomerInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderUncheckedUpdateWithoutCustomerInput = {
@@ -935,10 +1402,20 @@ export type OrderUncheckedUpdateWithoutCustomerInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderUncheckedUpdateManyWithoutCustomerInput = {
@@ -955,7 +1432,16 @@ export type OrderUncheckedUpdateManyWithoutCustomerInput = {
   shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingPostalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shippingCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryMode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isScheduled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  restaurantNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -967,10 +1453,12 @@ export type OrderUncheckedUpdateManyWithoutCustomerInput = {
 
 export type OrderCountOutputType = {
   items: number
+  statusHistory: number
 }
 
 export type OrderCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | OrderCountOutputTypeCountItemsArgs
+  statusHistory?: boolean | OrderCountOutputTypeCountStatusHistoryArgs
 }
 
 /**
@@ -990,6 +1478,13 @@ export type OrderCountOutputTypeCountItemsArgs<ExtArgs extends runtime.Types.Ext
   where?: Prisma.OrderItemWhereInput
 }
 
+/**
+ * OrderCountOutputType without action
+ */
+export type OrderCountOutputTypeCountStatusHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderStatusHistoryWhereInput
+}
+
 
 export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1006,11 +1501,21 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   shippingCity?: boolean
   shippingPostalCode?: boolean
   shippingCountry?: boolean
+  deliveryMode?: boolean
+  deliveryLat?: boolean
+  deliveryLng?: boolean
   stripePaymentIntentId?: boolean
+  scheduledFor?: boolean
+  isScheduled?: boolean
+  releasedAt?: boolean
+  restaurantNotifiedAt?: boolean
+  driverNote?: boolean
+  customerNote?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   items?: boolean | Prisma.Order$itemsArgs<ExtArgs>
+  statusHistory?: boolean | Prisma.Order$statusHistoryArgs<ExtArgs>
   _count?: boolean | Prisma.OrderCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["order"]>
 
@@ -1029,7 +1534,16 @@ export type OrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   shippingCity?: boolean
   shippingPostalCode?: boolean
   shippingCountry?: boolean
+  deliveryMode?: boolean
+  deliveryLat?: boolean
+  deliveryLng?: boolean
   stripePaymentIntentId?: boolean
+  scheduledFor?: boolean
+  isScheduled?: boolean
+  releasedAt?: boolean
+  restaurantNotifiedAt?: boolean
+  driverNote?: boolean
+  customerNote?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
@@ -1050,7 +1564,16 @@ export type OrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   shippingCity?: boolean
   shippingPostalCode?: boolean
   shippingCountry?: boolean
+  deliveryMode?: boolean
+  deliveryLat?: boolean
+  deliveryLng?: boolean
   stripePaymentIntentId?: boolean
+  scheduledFor?: boolean
+  isScheduled?: boolean
+  releasedAt?: boolean
+  restaurantNotifiedAt?: boolean
+  driverNote?: boolean
+  customerNote?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
@@ -1071,15 +1594,25 @@ export type OrderSelectScalar = {
   shippingCity?: boolean
   shippingPostalCode?: boolean
   shippingCountry?: boolean
+  deliveryMode?: boolean
+  deliveryLat?: boolean
+  deliveryLng?: boolean
   stripePaymentIntentId?: boolean
+  scheduledFor?: boolean
+  isScheduled?: boolean
+  releasedAt?: boolean
+  restaurantNotifiedAt?: boolean
+  driverNote?: boolean
+  customerNote?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "status" | "currency" | "totalAmountCents" | "customerId" | "shippingFullName" | "shippingEmail" | "shippingPhone" | "shippingAddressLine1" | "shippingAddressLine2" | "shippingCity" | "shippingPostalCode" | "shippingCountry" | "stripePaymentIntentId" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "status" | "currency" | "totalAmountCents" | "customerId" | "shippingFullName" | "shippingEmail" | "shippingPhone" | "shippingAddressLine1" | "shippingAddressLine2" | "shippingCity" | "shippingPostalCode" | "shippingCountry" | "deliveryMode" | "deliveryLat" | "deliveryLng" | "stripePaymentIntentId" | "scheduledFor" | "isScheduled" | "releasedAt" | "restaurantNotifiedAt" | "driverNote" | "customerNote" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   items?: boolean | Prisma.Order$itemsArgs<ExtArgs>
+  statusHistory?: boolean | Prisma.Order$statusHistoryArgs<ExtArgs>
   _count?: boolean | Prisma.OrderCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type OrderIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1094,6 +1627,7 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   objects: {
     customer: Prisma.$CustomerPayload<ExtArgs>
     items: Prisma.$OrderItemPayload<ExtArgs>[]
+    statusHistory: Prisma.$OrderStatusHistoryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1110,7 +1644,16 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     shippingCity: string | null
     shippingPostalCode: string | null
     shippingCountry: string | null
+    deliveryMode: string | null
+    deliveryLat: number | null
+    deliveryLng: number | null
     stripePaymentIntentId: string | null
+    scheduledFor: Date | null
+    isScheduled: boolean
+    releasedAt: Date | null
+    restaurantNotifiedAt: Date | null
+    driverNote: string | null
+    customerNote: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["order"]>
@@ -1509,6 +2052,7 @@ export interface Prisma__OrderClient<T, Null = never, ExtArgs extends runtime.Ty
   readonly [Symbol.toStringTag]: "PrismaPromise"
   customer<T extends Prisma.CustomerDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CustomerDefaultArgs<ExtArgs>>): Prisma.Prisma__CustomerClient<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   items<T extends Prisma.Order$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  statusHistory<T extends Prisma.Order$statusHistoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$statusHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderStatusHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1552,7 +2096,16 @@ export interface OrderFieldRefs {
   readonly shippingCity: Prisma.FieldRef<"Order", 'String'>
   readonly shippingPostalCode: Prisma.FieldRef<"Order", 'String'>
   readonly shippingCountry: Prisma.FieldRef<"Order", 'String'>
+  readonly deliveryMode: Prisma.FieldRef<"Order", 'String'>
+  readonly deliveryLat: Prisma.FieldRef<"Order", 'Float'>
+  readonly deliveryLng: Prisma.FieldRef<"Order", 'Float'>
   readonly stripePaymentIntentId: Prisma.FieldRef<"Order", 'String'>
+  readonly scheduledFor: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly isScheduled: Prisma.FieldRef<"Order", 'Boolean'>
+  readonly releasedAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly restaurantNotifiedAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly driverNote: Prisma.FieldRef<"Order", 'String'>
+  readonly customerNote: Prisma.FieldRef<"Order", 'String'>
   readonly createdAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Order", 'DateTime'>
 }
@@ -1977,6 +2530,30 @@ export type Order$itemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   distinct?: Prisma.OrderItemScalarFieldEnum | Prisma.OrderItemScalarFieldEnum[]
+}
+
+/**
+ * Order.statusHistory
+ */
+export type Order$statusHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OrderStatusHistory
+   */
+  select?: Prisma.OrderStatusHistorySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OrderStatusHistory
+   */
+  omit?: Prisma.OrderStatusHistoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderStatusHistoryInclude<ExtArgs> | null
+  where?: Prisma.OrderStatusHistoryWhereInput
+  orderBy?: Prisma.OrderStatusHistoryOrderByWithRelationInput | Prisma.OrderStatusHistoryOrderByWithRelationInput[]
+  cursor?: Prisma.OrderStatusHistoryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderStatusHistoryScalarFieldEnum | Prisma.OrderStatusHistoryScalarFieldEnum[]
 }
 
 /**

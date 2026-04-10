@@ -10,6 +10,11 @@ datasource db {
 enum OrderStatus {
   PENDING
   PAID
+  SCHEDULED
+  RELEASED
+  CONFIRMED
+  OUT_FOR_DELIVERY
+  DELIVERED
   CANCELLED
 }
 
@@ -38,28 +43,47 @@ model Customer {
 }
 
 model Order {
-  id                   String       @id @default(cuid())
-  orderNumber          String       @unique
-  status               OrderStatus  @default(PENDING)
-  currency             String       @default("EUR")
-  totalAmountCents     Int
-  customerId           String
-  customer             Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  shippingFullName     String?
-  shippingEmail        String?
-  shippingPhone        String?
-  shippingAddressLine1 String?
-  shippingAddressLine2 String?
-  shippingCity         String?
-  shippingPostalCode   String?
-  shippingCountry      String?
-  deliveryMode         String?
-  deliveryLat          Float?
-  deliveryLng          Float?
-  stripePaymentIntentId String?     @unique
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  items                OrderItem[]
+  id                    String               @id @default(cuid())
+  orderNumber           String               @unique
+  status                OrderStatus          @default(PENDING)
+  currency              String               @default("EUR")
+  totalAmountCents      Int
+  customerId            String
+  customer              Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  shippingFullName      String?
+  shippingEmail         String?
+  shippingPhone         String?
+  shippingAddressLine1  String?
+  shippingAddressLine2  String?
+  shippingCity          String?
+  shippingPostalCode    String?
+  shippingCountry       String?
+  deliveryMode          String?
+  deliveryLat           Float?
+  deliveryLng           Float?
+  stripePaymentIntentId String?              @unique
+
+  // Scheduling
+  scheduledFor          DateTime?
+  isScheduled           Boolean              @default(false)
+  releasedAt            DateTime?
+
+  // Restaurant tracking
+  restaurantNotifiedAt  DateTime?
+
+  // Driver
+  driverNote            String?
+
+  // Customer note
+  customerNote          String?
+
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  items                 OrderItem[]
+  statusHistory         OrderStatusHistory[]
+
+  @@index([isScheduled, scheduledFor])
+  @@index([status])
 }
 
 model OrderItem {
@@ -73,4 +97,33 @@ model OrderItem {
 
   order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product        Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+// Audit trail: every status change across all actors is recorded here
+model OrderStatusHistory {
+  id         String       @id @default(cuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  // Who triggered the change: "stripe_webhook" | "cron" | "restaurant" | "driver" | "owner" | "system"
+  changedBy  String
+  note       String?
+  createdAt  DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+// Key-value store for owner-configurable business settings
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// Records per-day acknowledgments from the restaurant for "big days"
+model BigDayAck {
+  date      DateTime @id
+  ackedAt   DateTime
+  updatedAt DateTime @updatedAt
 }

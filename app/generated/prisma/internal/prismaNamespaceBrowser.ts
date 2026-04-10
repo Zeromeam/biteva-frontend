@@ -54,7 +54,10 @@ export const ModelName = {
   Product: 'Product',
   Customer: 'Customer',
   Order: 'Order',
-  OrderItem: 'OrderItem'
+  OrderItem: 'OrderItem',
+  OrderStatusHistory: 'OrderStatusHistory',
+  AppConfig: 'AppConfig',
+  BigDayAck: 'BigDayAck'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -116,7 +119,16 @@ export const OrderScalarFieldEnum = {
   shippingCity: 'shippingCity',
   shippingPostalCode: 'shippingPostalCode',
   shippingCountry: 'shippingCountry',
+  deliveryMode: 'deliveryMode',
+  deliveryLat: 'deliveryLat',
+  deliveryLng: 'deliveryLng',
   stripePaymentIntentId: 'stripePaymentIntentId',
+  scheduledFor: 'scheduledFor',
+  isScheduled: 'isScheduled',
+  releasedAt: 'releasedAt',
+  restaurantNotifiedAt: 'restaurantNotifiedAt',
+  driverNote: 'driverNote',
+  customerNote: 'customerNote',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -135,6 +147,37 @@ export const OrderItemScalarFieldEnum = {
 } as const
 
 export type OrderItemScalarFieldEnum = (typeof OrderItemScalarFieldEnum)[keyof typeof OrderItemScalarFieldEnum]
+
+
+export const OrderStatusHistoryScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  fromStatus: 'fromStatus',
+  toStatus: 'toStatus',
+  changedBy: 'changedBy',
+  note: 'note',
+  createdAt: 'createdAt'
+} as const
+
+export type OrderStatusHistoryScalarFieldEnum = (typeof OrderStatusHistoryScalarFieldEnum)[keyof typeof OrderStatusHistoryScalarFieldEnum]
+
+
+export const AppConfigScalarFieldEnum = {
+  key: 'key',
+  value: 'value',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AppConfigScalarFieldEnum = (typeof AppConfigScalarFieldEnum)[keyof typeof AppConfigScalarFieldEnum]
+
+
+export const BigDayAckScalarFieldEnum = {
+  date: 'date',
+  ackedAt: 'ackedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BigDayAckScalarFieldEnum = (typeof BigDayAckScalarFieldEnum)[keyof typeof BigDayAckScalarFieldEnum]
 
 
 export const SortOrder = {
