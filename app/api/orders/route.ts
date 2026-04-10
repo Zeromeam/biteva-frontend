@@ -5,12 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { makeOrderNumber } from "@/lib/order-number";
 import { getResend } from "@/lib/resend";
 import { buildReceiptEmail } from "@/lib/email/receipt";
+import { appConfig } from "@/lib/app-config";
 
 export const dynamic = "force-dynamic";
 
 // ── GET (unchanged) ──────────────────────────────────────────────────────
 
-const ORDER_STATUSES = ["PENDING", "PAID", "CANCELLED"] as const;
+const ORDER_STATUSES = [
+  "PENDING", "PAID", "SCHEDULED", "RELEASED", "CONFIRMED",
+  "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED",
+] as const;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
 
@@ -24,6 +28,8 @@ function serializeOrder(order: {
   status: string;
   currency: string;
   totalAmountCents: number;
+  scheduledFor?: Date | null;
+  isScheduled?: boolean;
   deliveryMode: string | null;
   deliveryLat: number | null;
   deliveryLng: number | null;
@@ -52,6 +58,8 @@ function serializeOrder(order: {
     status: order.status,
     currency: order.currency,
     totalAmountCents: order.totalAmountCents,
+    scheduledFor: order.scheduledFor ?? null,
+    isScheduled: order.isScheduled ?? false,
     deliveryMode: order.deliveryMode ?? "address",
     deliveryLat: order.deliveryLat,
     deliveryLng: order.deliveryLng,
@@ -173,6 +181,8 @@ const createOrderSchema = z.object({
   }),
   subtotal: z.number(),
   stripePaymentIntentId: z.string().optional(),
+  // Optional scheduled delivery: ISO datetime string from the customer's date+time picker
+  scheduledFor: z.string().datetime({ offset: true }).optional(),
 }).superRefine((val, ctx) => {
   if (val.deliveryMode === "address") {
     if (!val.customer.address?.trim()) {
@@ -244,6 +254,40 @@ export async function POST(request: Request) {
       dbProductIds[item.productId] = product.id;
     }
 
+    // ── Validate scheduledFor if provided ─────────────────────────────────
+    let scheduledForDate: Date | null = null;
+    if (data.scheduledFor) {
+      const [minHours, maxDays] = await Promise.all([
+        appConfig.minScheduleAdvanceHours(),
+        appConfig.maxScheduleDays(),
+      ]);
+      const now = new Date();
+      const minTime = new Date(now.getTime() + minHours * 60 * 60 * 1000);
+      const maxTime = new Date(now.getTime() + maxDays * 24 * 60 * 60 * 1000);
+      scheduledForDate = new Date(data.scheduledFor);
+
+      if (scheduledForDate < minTime) {
+        return Response.json(
+          { error: `Scheduled delivery must be at least ${minHours} hours from now.` },
+          { status: 400 },
+        );
+      }
+      if (scheduledForDate > maxTime) {
+        return Response.json(
+          { error: `Scheduled delivery cannot be more than ${maxDays} days ahead.` },
+          { status: 400 },
+        );
+      }
+    }
+
+    const isScheduled = !!scheduledForDate;
+    // If payment is confirmed and the order is scheduled, status = SCHEDULED
+    // If payment is confirmed and ASAP, status = PAID
+    // If no payment yet, status = PENDING
+    const initialStatus = data.stripePaymentIntentId
+      ? isScheduled ? "SCHEDULED" : "PAID"
+      : "PENDING";
+
     // Generate a unique order number
     let orderNumber = makeOrderNumber();
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -252,15 +296,17 @@ export async function POST(request: Request) {
       orderNumber = makeOrderNumber();
     }
 
-    // ── Create order + decrement stock atomically ─────────────────────────
+    // ── Create order + decrement stock + write initial history — atomically
     const [order] = await prisma.$transaction([
       prisma.order.create({
         data: {
           orderNumber,
-          status: data.stripePaymentIntentId ? "PAID" : "PENDING",
+          status: initialStatus,
           currency: "EUR",
           totalAmountCents,
           customerId: customer.id,
+          scheduledFor: scheduledForDate,
+          isScheduled,
           deliveryMode: data.deliveryMode,
           deliveryLat: data.deliveryLat ?? null,
           deliveryLng: data.deliveryLng ?? null,
@@ -272,6 +318,7 @@ export async function POST(request: Request) {
           shippingCity: data.customer.city ?? null,
           shippingPostalCode: data.customer.postalCode ?? null,
           shippingCountry: data.customer.country,
+          customerNote: data.customer.note ?? null,
           stripePaymentIntentId: data.stripePaymentIntentId ?? null,
           items: {
             create: data.items.map((item) => ({
@@ -280,6 +327,14 @@ export async function POST(request: Request) {
               unitPriceCents: Math.round(item.unitPrice * 100),
               lineTotalCents: Math.round(item.totalPrice * 100),
             })),
+          },
+          statusHistory: {
+            create: {
+              fromStatus: null,
+              toStatus: initialStatus,
+              changedBy: "system",
+              note: isScheduled ? `Scheduled for ${scheduledForDate!.toISOString()}` : "Order created",
+            },
           },
         },
         select: { orderNumber: true },
@@ -303,7 +358,10 @@ export async function POST(request: Request) {
 
         if (fullOrder) {
           const receiptUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/orders/${order.orderNumber}`;
-          const { subject, html } = buildReceiptEmail(fullOrder, receiptUrl);
+          const { subject, html } = buildReceiptEmail(
+            { ...fullOrder, scheduledFor: scheduledForDate },
+            receiptUrl,
+          );
           await getResend().emails.send({
             from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
             to: data.customer.email,

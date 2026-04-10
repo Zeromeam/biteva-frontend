@@ -1,10 +1,23 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import type { OrderStatus } from "@/app/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
 const updateOrderSchema = z.object({
-  status: z.enum(["PENDING", "PAID", "CANCELLED"]),
+  status: z.enum([
+    "PENDING",
+    "PAID",
+    "SCHEDULED",
+    "RELEASED",
+    "CONFIRMED",
+    "OUT_FOR_DELIVERY",
+    "DELIVERED",
+    "CANCELLED",
+  ]),
+  // Who is making this change — used for the audit trail
+  changedBy: z.enum(["owner", "restaurant", "driver", "system"]).default("owner"),
+  note: z.string().optional(),
 });
 
 function serializeOrder(order: {
@@ -13,6 +26,8 @@ function serializeOrder(order: {
   status: string;
   currency: string;
   totalAmountCents: number;
+  scheduledFor: Date | null;
+  isScheduled: boolean;
   deliveryMode: string | null;
   deliveryLat: number | null;
   deliveryLng: number | null;
@@ -24,6 +39,8 @@ function serializeOrder(order: {
   shippingCity: string | null;
   shippingPostalCode: string | null;
   shippingCountry: string | null;
+  customerNote: string | null;
+  driverNote: string | null;
   createdAt: Date;
   updatedAt: Date;
   customer: {
@@ -48,11 +65,15 @@ function serializeOrder(order: {
     status: order.status,
     currency: order.currency,
     totalAmountCents: order.totalAmountCents,
+    scheduledFor: order.scheduledFor,
+    isScheduled: order.isScheduled,
     deliveryMode: order.deliveryMode ?? "address",
     deliveryLat: order.deliveryLat,
     deliveryLng: order.deliveryLng,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
+    customerNote: order.customerNote,
+    driverNote: order.driverNote,
     customer: {
       fullName: order.customer.fullName,
       email: order.customer.email,
@@ -94,6 +115,8 @@ export async function GET(
         status: true,
         currency: true,
         totalAmountCents: true,
+        scheduledFor: true,
+        isScheduled: true,
         deliveryMode: true,
         deliveryLat: true,
         deliveryLng: true,
@@ -105,6 +128,8 @@ export async function GET(
         shippingCity: true,
         shippingPostalCode: true,
         shippingCountry: true,
+        customerNote: true,
+        driverNote: true,
         createdAt: true,
         updatedAt: true,
         customer: { select: { fullName: true, email: true, phone: true } },
@@ -157,20 +182,24 @@ export async function PATCH(
       return Response.json({ error: "Order not found." }, { status: 404 });
     }
 
-    const wasCancelled = existingOrder.status === "CANCELLED";
-    const becomingCancelled = data.status === "CANCELLED" && !wasCancelled;
-    const becomingUncancelled = wasCancelled && data.status !== "CANCELLED";
+    const fromStatus = existingOrder.status as OrderStatus;
+    const toStatus = data.status as OrderStatus;
+    const wasCancelled = fromStatus === "CANCELLED";
+    const becomingCancelled = toStatus === "CANCELLED" && !wasCancelled;
+    const becomingUncancelled = wasCancelled && toStatus !== "CANCELLED";
 
     const [order] = await prisma.$transaction([
       prisma.order.update({
         where: { id },
-        data: { status: data.status },
+        data: { status: toStatus },
         select: {
           id: true,
           orderNumber: true,
           status: true,
           currency: true,
           totalAmountCents: true,
+          scheduledFor: true,
+          isScheduled: true,
           deliveryMode: true,
           deliveryLat: true,
           deliveryLng: true,
@@ -182,6 +211,8 @@ export async function PATCH(
           shippingCity: true,
           shippingPostalCode: true,
           shippingCountry: true,
+          customerNote: true,
+          driverNote: true,
           createdAt: true,
           updatedAt: true,
           customer: { select: { fullName: true, email: true, phone: true } },
@@ -194,6 +225,16 @@ export async function PATCH(
               product: { select: { name: true, slug: true } },
             },
           },
+        },
+      }),
+      // Write to audit trail
+      prisma.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          fromStatus,
+          toStatus,
+          changedBy: data.changedBy,
+          note: data.note ?? null,
         },
       }),
       // Restore stock when cancelled

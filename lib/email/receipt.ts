@@ -6,6 +6,7 @@ type ReceiptOrder = {
   orderNumber: string;
   createdAt: Date;
   totalAmountCents: number;
+  scheduledFor?: Date | null;
   shippingFullName: string | null;
   shippingEmail: string | null;
   shippingPhone: string | null;
@@ -25,7 +26,10 @@ export function buildReceiptEmail(
   order: ReceiptOrder,
   receiptUrl: string,
 ): { subject: string; html: string } {
-  const subject = `Your Biteva receipt — ${order.orderNumber}`;
+  const isScheduled = !!order.scheduledFor;
+  const subject = isScheduled
+    ? `Your Biteva order is scheduled — ${order.orderNumber}`
+    : `Your Biteva receipt — ${order.orderNumber}`;
 
   const addressParts = [
     order.shippingAddressLine1,
@@ -77,7 +81,13 @@ export function buildReceiptEmail(
             <td style="background:#ffffff;padding:36px;">
 
               <h1 style="font-size:22px;font-weight:700;margin:0 0 4px;">Danke für deine Bestellung!</h1>
-              <p style="font-size:14px;color:#666;margin:0 0 28px;">Deine Bestellung wurde erfolgreich aufgenommen.</p>
+              <p style="font-size:14px;color:#666;margin:0 0 20px;">Deine Bestellung wurde erfolgreich aufgenommen.</p>
+              ${isScheduled && order.scheduledFor ? `
+              <div style="background:#FFF3CD;border-left:4px solid #D99E4F;padding:14px 18px;border-radius:8px;margin-bottom:24px;">
+                <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Geplante Lieferzeit</div>
+                <div style="font-size:15px;font-weight:700;">${order.scheduledFor.toLocaleString("de-AT", { weekday: "long", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                <div style="font-size:12px;color:#777;margin-top:6px;">Wir werden deine Bestellung rechtzeitig vorbereiten.</div>
+              </div>` : ""}
 
               <!-- Order meta -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
