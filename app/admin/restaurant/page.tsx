@@ -48,7 +48,7 @@ function formatTime(dateString: string | null) {
 }
 
 function formatShortDate(dateString: string) {
-  return new Intl.DateTimeFormat("de-AT", { weekday: "short", day: "2-digit", month: "short" }).format(new Date(dateString));
+  return new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(dateString));
 }
 
 const STATUS_NEXT: Partial<Record<OrderStatus, { label: string; next: OrderStatus }>> = {
