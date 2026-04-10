@@ -48,8 +48,14 @@ export async function GET(request: Request) {
       orderBy: { scheduledFor: "asc" },
     });
 
-    if (tomorrowOrders.length < threshold) {
-      return Response.json({ ok: true, orderCount: tomorrowOrders.length, bigDay: false });
+    // Compute total item quantity across all tomorrow's orders
+    let totalItems = 0;
+    for (const order of tomorrowOrders) {
+      for (const item of order.items) totalItems += item.quantity;
+    }
+
+    if (totalItems < threshold) {
+      return Response.json({ ok: true, totalItems, bigDay: false });
     }
 
     // Check if already acknowledged
@@ -70,8 +76,8 @@ export async function GET(request: Request) {
       })),
     });
 
-    console.log(`[cron/day-before-reminders] Sent big-day alert for ${tomorrowStart.toISOString().slice(0, 10)} (${tomorrowOrders.length} orders)`);
-    return Response.json({ ok: true, bigDay: true, orderCount: tomorrowOrders.length, notified: true });
+    console.log(`[cron/day-before-reminders] Sent big-day alert for ${tomorrowStart.toISOString().slice(0, 10)} (${totalItems} items across ${tomorrowOrders.length} orders)`);
+    return Response.json({ ok: true, bigDay: true, totalItems, orderCount: tomorrowOrders.length, notified: true });
   } catch (error) {
     console.error("[cron/day-before-reminders] Failed:", error);
     return Response.json({ error: "Cron job failed" }, { status: 500 });
