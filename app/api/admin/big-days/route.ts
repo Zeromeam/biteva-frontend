@@ -3,7 +3,7 @@ import { appConfig } from "@/lib/app-config";
 
 export const dynamic = "force-dynamic";
 
-// Returns upcoming big days (days with order count >= threshold) + their ack status
+// Returns upcoming big days (days with total item quantity >= threshold) + their ack status
 export async function GET() {
   try {
     const threshold = await appConfig.bigDayOrderThreshold();
@@ -86,10 +86,10 @@ export async function GET() {
       }
     }
 
-    // Filter to only big days (order count >= threshold) and sort topItems
+    // Filter to only big days (total item quantity >= threshold) and sort topItems
     const bigDayDates: Date[] = [];
     const bigDays = [...dayMap.values()]
-      .filter((g) => g.orderCount >= threshold)
+      .filter((g) => g.totalItems >= threshold)
       .map((g) => {
         bigDayDates.push(g.date);
         return {

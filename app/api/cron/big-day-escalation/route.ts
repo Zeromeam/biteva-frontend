@@ -39,20 +39,20 @@ export async function GET(request: Request) {
       orderBy: { scheduledFor: "asc" },
     });
 
-    if (tomorrowOrders.length < threshold) {
-      return Response.json({ ok: true, bigDay: false, orderCount: tomorrowOrders.length });
+    // Compute total item quantity across all tomorrow's orders
+    let totalItems = 0;
+    for (const order of tomorrowOrders) {
+      for (const item of order.items) totalItems += item.quantity;
+    }
+
+    if (totalItems < threshold) {
+      return Response.json({ ok: true, bigDay: false, totalItems, orderCount: tomorrowOrders.length });
     }
 
     // Only escalate if NOT yet acknowledged
     const ack = await prisma.bigDayAck.findUnique({ where: { date: tomorrowStart } });
     if (ack) {
       return Response.json({ ok: true, bigDay: true, alreadyAcked: true, escalated: false });
-    }
-
-    // Compute total items for the summary
-    let totalItems = 0;
-    for (const order of tomorrowOrders) {
-      for (const item of order.items) totalItems += item.quantity;
     }
 
     await notifyRestaurantBigDayEscalation({
