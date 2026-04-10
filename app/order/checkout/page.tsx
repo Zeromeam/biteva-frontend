@@ -1012,6 +1012,7 @@ export default function CheckoutPage() {
 
               {subtotalCents > 0 && (
                 <Elements
+                  key={subtotalCents}
                   stripe={stripePromise}
                   options={{
                     mode: "payment",
