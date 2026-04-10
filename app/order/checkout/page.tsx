@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BillingDetails,
   CartItem,
@@ -455,106 +455,6 @@ function buildTimeSlots(selectedDate: string): string[] {
   return slots;
 }
 
-// Custom DD.MM.YYYY date input — avoids browser locale issues with type="date"
-function DateInput({
-  value,          // YYYY-MM-DD
-  min,            // YYYY-MM-DD
-  max,            // YYYY-MM-DD
-  onChange,       // called with YYYY-MM-DD when a valid date is entered
-}: {
-  value: string;
-  min: string;
-  max: string;
-  onChange: (date: string) => void;
-}) {
-  const [yy, mm, dd] = value.split("-");
-  const [dVal, setDVal] = useState(dd ?? "");
-  const [mVal, setMVal] = useState(mm ?? "");
-  const [yVal, setYVal] = useState(yy ?? "");
-
-  const refM = useRef<HTMLInputElement>(null);
-  const refY = useRef<HTMLInputElement>(null);
-
-  // Sync external value → local state
-  useEffect(() => {
-    const [ny, nm, nd] = value.split("-");
-    setDVal(nd ?? "");
-    setMVal(nm ?? "");
-    setYVal(ny ?? "");
-  }, [value]);
-
-  function tryEmit(d: string, m: string, y: string) {
-    if (d.length === 2 && m.length === 2 && y.length === 4) {
-      const iso = `${y}-${m}-${d}`;
-      const parsed = new Date(iso);
-      if (!isNaN(parsed.getTime()) && iso >= min && iso <= max) {
-        onChange(iso);
-      }
-    }
-  }
-
-  const seg: React.CSSProperties = {
-    width: "44px", textAlign: "center", background: "transparent", border: "none",
-    outline: "none", color: "#e8e3de", fontSize: "15px", fontWeight: 500,
-    fontFamily: "'DM Sans', system-ui, sans-serif", padding: "0",
-  };
-
-  const dot: React.CSSProperties = {
-    color: "#525252", fontSize: "15px", userSelect: "none", lineHeight: 1,
-  };
-
-  return (
-    <div
-      className="checkout-input"
-      style={{ display: "flex", alignItems: "center", gap: "2px", padding: "0 14px", cursor: "text" }}
-      onClick={() => { /* focus first empty */ }}
-    >
-      <input
-        style={seg}
-        placeholder="TT"
-        inputMode="numeric"
-        maxLength={2}
-        value={dVal}
-        onChange={(e) => {
-          const v = e.target.value.replace(/\D/g, "").slice(0, 2);
-          setDVal(v);
-          if (v.length === 2) refM.current?.focus();
-          tryEmit(v, mVal, yVal);
-        }}
-      />
-      <span style={dot}>.</span>
-      <input
-        ref={refM}
-        style={seg}
-        placeholder="MM"
-        inputMode="numeric"
-        maxLength={2}
-        value={mVal}
-        onChange={(e) => {
-          const v = e.target.value.replace(/\D/g, "").slice(0, 2);
-          setMVal(v);
-          if (v.length === 2) refY.current?.focus();
-          tryEmit(dVal, v, yVal);
-        }}
-      />
-      <span style={dot}>.</span>
-      <input
-        ref={refY}
-        style={{ ...seg, width: "56px" }}
-        placeholder="JJJJ"
-        inputMode="numeric"
-        maxLength={4}
-        value={yVal}
-        onChange={(e) => {
-          const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-          setYVal(v);
-          tryEmit(dVal, mVal, v);
-        }}
-      />
-    </div>
-  );
-}
-
 function DeliveryTimeSelector({
   value,
   onChange,
@@ -563,13 +463,15 @@ function DeliveryTimeSelector({
   onChange: (iso: string | null) => void;
 }) {
   const isScheduled = value !== null;
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const today = new Date();
   const minDate = (() => {
-    // Minimum date: today if there are still slots left today, else tomorrow
     const lastSlotToday = new Date(today.toISOString().slice(0, 10) + `T${OPERATING_END - 1}:30:00`);
     const minTime = new Date(today.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
-    return minTime < lastSlotToday ? today.toISOString().slice(0, 10) : (() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
+    return minTime < lastSlotToday
+      ? today.toISOString().slice(0, 10)
+      : (() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
   })();
 
   const maxDate = (() => {
@@ -578,25 +480,34 @@ function DeliveryTimeSelector({
     return d.toISOString().slice(0, 10);
   })();
 
-  // Parse current value
+  // Human-readable boundary labels for error messages
+  const minLabel = new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(minDate));
+  const maxLabel = new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(maxDate));
+
   const selectedDate = value ? value.slice(0, 10) : minDate;
   const selectedTime = value ? value.slice(11, 16) : "";
-
   const timeSlots = buildTimeSlots(selectedDate);
 
   function handleToggle(scheduled: boolean) {
-    if (!scheduled) { onChange(null); return; }
-    // Set a default: first available slot on minDate
+    if (!scheduled) { setDateError(null); onChange(null); return; }
     const slots = buildTimeSlots(minDate);
-    if (slots.length > 0) {
-      onChange(`${minDate}T${slots[0]}:00+00:00`);
-    }
+    if (slots.length > 0) onChange(`${minDate}T${slots[0]}:00+00:00`);
   }
 
-  function handleDateChange(date: string) {
-    const slots = buildTimeSlots(date);
+  function handleDateChange(raw: string) {
+    if (!raw) return;
+    if (raw < minDate) {
+      setDateError(`Too soon — earliest available date is ${minLabel}`);
+      return;
+    }
+    if (raw > maxDate) {
+      setDateError(`Too far ahead — latest available date is ${maxLabel}`);
+      return;
+    }
+    setDateError(null);
+    const slots = buildTimeSlots(raw);
     const time = slots.length > 0 ? slots[0] : "12:00";
-    onChange(`${date}T${time}:00+00:00`);
+    onChange(`${raw}T${time}:00+00:00`);
   }
 
   function handleTimeChange(time: string) {
@@ -634,35 +545,65 @@ function DeliveryTimeSelector({
         </button>
       </div>
 
-      {/* Date + time pickers — only shown when scheduled */}
+      {/* Date + time — only when scheduled */}
       {isScheduled && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-          <div>
-            <label style={labelStyle}>Date</label>
-            <DateInput
-              value={selectedDate}
-              min={minDate}
-              max={maxDate}
-              onChange={handleDateChange}
-            />
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            {/* Date */}
+            <div>
+              <label style={labelStyle}>Date</label>
+              <input
+                type="date"
+                className="checkout-input"
+                value={selectedDate}
+                min={minDate}
+                max={maxDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                style={{
+                  colorScheme: "dark",
+                  border: dateError ? "1px solid rgba(239,68,68,0.6)" : undefined,
+                  outline: dateError ? "none" : undefined,
+                }}
+              />
+            </div>
+
+            {/* Time — disabled when date has an error or no slots */}
+            <div>
+              <label style={{ ...labelStyle, color: dateError ? "#3a3a3a" : "#525252" }}>Time</label>
+              <select
+                className="checkout-input"
+                value={selectedTime}
+                disabled={!!dateError || timeSlots.length === 0}
+                onChange={(e) => handleTimeChange(e.target.value)}
+                style={{
+                  appearance: "none", cursor: dateError || timeSlots.length === 0 ? "not-allowed" : "pointer",
+                  opacity: dateError || timeSlots.length === 0 ? 0.35 : 1,
+                }}
+              >
+                {timeSlots.length === 0 ? (
+                  <option value="">No slots available</option>
+                ) : (
+                  timeSlots.map((slot) => (
+                    <option key={slot} value={slot}>{slot}</option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
-          <div>
-            <label style={labelStyle}>Time</label>
-            <select
-              className="checkout-input"
-              value={selectedTime}
-              onChange={(e) => handleTimeChange(e.target.value)}
-              style={{ appearance: "none", cursor: "pointer" }}
-            >
-              {timeSlots.length === 0 ? (
-                <option value="">No slots available</option>
-              ) : (
-                timeSlots.map((slot) => (
-                  <option key={slot} value={slot}>{slot}</option>
-                ))
-              )}
-            </select>
-          </div>
+
+          {/* Inline error */}
+          {dateError && (
+            <p style={{ margin: 0, fontSize: "12px", color: "#ef4444", display: "flex", alignItems: "center", gap: "5px" }}>
+              <span>⚠</span> {dateError}
+            </p>
+          )}
+
+          {/* Helper hint when no error */}
+          {!dateError && (
+            <p style={{ margin: 0, fontSize: "11px", color: "#3a3a3a" }}>
+              Available {minLabel} – {maxLabel}
+            </p>
+          )}
         </div>
       )}
     </div>
