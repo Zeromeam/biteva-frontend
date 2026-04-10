@@ -55,6 +55,7 @@ interface PaymentSectionProps {
   deliveryMode: "address" | "gps";
   gpsCoords: { lat: number; lng: number } | null;
   subtotalCents: number;
+  scheduledFor: string | null;
   onValidationError: (msg: string) => void;
   onSuccess: (orderNumber: string) => void;
   onError: (msg: string) => void;
@@ -68,6 +69,7 @@ async function createOrder(
   paymentIntentId: string,
   deliveryMode: "address" | "gps",
   gpsCoords: { lat: number; lng: number } | null,
+  scheduledFor: string | null,
 ): Promise<{ ok: true; orderNumber: string } | { ok: false; error: string }> {
   try {
     const res = await fetch("/api/orders", {
@@ -91,6 +93,7 @@ async function createOrder(
         customer: details,
         subtotal: subtotalCents / 100,
         stripePaymentIntentId: paymentIntentId,
+        ...(scheduledFor ? { scheduledFor } : {}),
       }),
     });
     const data = await res.json() as { orderNumber?: string; error?: string };
@@ -125,12 +128,13 @@ interface CardFormProps {
   deliveryMode: "address" | "gps";
   gpsCoords: { lat: number; lng: number } | null;
   subtotalCents: number;
+  scheduledFor: string | null;
   clientSecret: string;
   onSuccess: (orderNumber: string) => void;
   onError: (msg: string) => void;
 }
 
-function CardForm({ cart, details, billing, deliveryMode, gpsCoords, subtotalCents, clientSecret, onSuccess, onError }: CardFormProps) {
+function CardForm({ cart, details, billing, deliveryMode, gpsCoords, subtotalCents, scheduledFor, clientSecret, onSuccess, onError }: CardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isPaying, setIsPaying] = useState(false);
@@ -170,7 +174,7 @@ function CardForm({ cart, details, billing, deliveryMode, gpsCoords, subtotalCen
       if (error) { onError(error.message ?? "Payment failed."); return; }
       if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
 
-      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id, deliveryMode, gpsCoords);
+      const result = await createOrder(cart, details, subtotalCents, paymentIntent.id, deliveryMode, gpsCoords, scheduledFor);
       if (!result.ok) { onError(result.error); return; }
       clearCart();
       onSuccess(result.orderNumber);
@@ -216,7 +220,7 @@ function CardForm({ cart, details, billing, deliveryMode, gpsCoords, subtotalCen
   );
 }
 
-function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subtotalCents, onValidationError, onSuccess, onError }: PaymentSectionProps) {
+function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subtotalCents, scheduledFor, onValidationError, onSuccess, onError }: PaymentSectionProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [showCardForm, setShowCardForm] = useState(false);
@@ -288,7 +292,7 @@ function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subto
     if (error) { onError(error.message ?? "Payment failed."); return; }
     if (paymentIntent?.status !== "succeeded") { onError("Payment was not completed."); return; }
 
-    const result = await createOrder(cart, details, subtotalCents, paymentIntent.id, deliveryMode, gpsCoords);
+    const result = await createOrder(cart, details, subtotalCents, paymentIntent.id, deliveryMode, gpsCoords, scheduledFor);
     if (!result.ok) { onError(result.error); return; }
     clearCart();
     onSuccess(result.orderNumber);
@@ -353,6 +357,7 @@ function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subto
             deliveryMode={deliveryMode}
             gpsCoords={gpsCoords}
             subtotalCents={subtotalCents}
+            scheduledFor={scheduledFor}
             clientSecret={cardClientSecret}
             onSuccess={(orderNumber) => { onSuccess(orderNumber); }}
             onError={onError}
@@ -427,6 +432,146 @@ function BillingForm({ billing, onChange }: BillingFormProps) {
   );
 }
 
+// ── Delivery time selector ────────────────────────────────────────────────────
+
+const OPERATING_START = 10; // 10:00
+const OPERATING_END = 22;   // 22:00
+const MIN_ADVANCE_HOURS = 2;
+const MAX_ADVANCE_DAYS = 30;
+
+function buildTimeSlots(selectedDate: string): string[] {
+  const slots: string[] = [];
+  const now = new Date();
+  const isToday = selectedDate === now.toISOString().slice(0, 10);
+
+  for (let h = OPERATING_START; h < OPERATING_END; h++) {
+    for (const m of [0, 30]) {
+      const slot = new Date(selectedDate + "T" + String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":00");
+      const minTime = new Date(now.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
+      if (isToday && slot < minTime) continue;
+      slots.push(slot.toTimeString().slice(0, 5));
+    }
+  }
+  return slots;
+}
+
+function DeliveryTimeSelector({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (iso: string | null) => void;
+}) {
+  const isScheduled = value !== null;
+
+  const today = new Date();
+  const minDate = (() => {
+    // Minimum date: today if there are still slots left today, else tomorrow
+    const lastSlotToday = new Date(today.toISOString().slice(0, 10) + `T${OPERATING_END - 1}:30:00`);
+    const minTime = new Date(today.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
+    return minTime < lastSlotToday ? today.toISOString().slice(0, 10) : (() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
+  })();
+
+  const maxDate = (() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + MAX_ADVANCE_DAYS);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  // Parse current value
+  const selectedDate = value ? value.slice(0, 10) : minDate;
+  const selectedTime = value ? value.slice(11, 16) : "";
+
+  const timeSlots = buildTimeSlots(selectedDate);
+
+  function handleToggle(scheduled: boolean) {
+    if (!scheduled) { onChange(null); return; }
+    // Set a default: first available slot on minDate
+    const slots = buildTimeSlots(minDate);
+    if (slots.length > 0) {
+      onChange(`${minDate}T${slots[0]}:00+00:00`);
+    }
+  }
+
+  function handleDateChange(date: string) {
+    const slots = buildTimeSlots(date);
+    const time = slots.length > 0 ? slots[0] : "12:00";
+    onChange(`${date}T${time}:00+00:00`);
+  }
+
+  function handleTimeChange(time: string) {
+    onChange(`${selectedDate}T${time}:00+00:00`);
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em",
+    textTransform: "uppercase", color: "#525252", marginBottom: "8px",
+  };
+
+  return (
+    <div>
+      {/* Toggle */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: isScheduled ? "14px" : "0" }}>
+        <button type="button" onClick={() => handleToggle(false)}
+          style={{
+            flex: 1, padding: "10px 16px", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s",
+            fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "13px", fontWeight: 600,
+            border: !isScheduled ? "1px solid rgba(217,158,79,0.4)" : "1px solid rgba(255,255,255,0.08)",
+            background: !isScheduled ? "rgba(217,158,79,0.08)" : "rgba(255,255,255,0.02)",
+            color: !isScheduled ? "#D99E4F" : "#5a5550",
+          }}>
+          As soon as possible
+        </button>
+        <button type="button" onClick={() => handleToggle(true)}
+          style={{
+            flex: 1, padding: "10px 16px", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s",
+            fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "13px", fontWeight: 600,
+            border: isScheduled ? "1px solid rgba(217,158,79,0.4)" : "1px solid rgba(255,255,255,0.08)",
+            background: isScheduled ? "rgba(217,158,79,0.08)" : "rgba(255,255,255,0.02)",
+            color: isScheduled ? "#D99E4F" : "#5a5550",
+          }}>
+          Schedule for later
+        </button>
+      </div>
+
+      {/* Date + time pickers — only shown when scheduled */}
+      {isScheduled && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          <div>
+            <label style={labelStyle}>Date</label>
+            <input
+              type="date"
+              className="checkout-input"
+              value={selectedDate}
+              min={minDate}
+              max={maxDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              style={{ colorScheme: "dark" }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Time</label>
+            <select
+              className="checkout-input"
+              value={selectedTime}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              style={{ appearance: "none", cursor: "pointer" }}
+            >
+              {timeSlots.length === 0 ? (
+                <option value="">No slots available</option>
+              ) : (
+                timeSlots.map((slot) => (
+                  <option key={slot} value={slot}>{slot}</option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main checkout page ────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
@@ -438,6 +583,9 @@ export default function CheckoutPage() {
   // Delivery mode
   const [deliveryMode, setDeliveryMode] = useState<"address" | "gps">("address");
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Scheduled delivery — null means ASAP
+  const [scheduledFor, setScheduledFor] = useState<string | null>(null);
 
   // Billing
   const [billingSameAsDelivery, setBillingSameAsDelivery] = useState(true);
@@ -756,6 +904,13 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* ── When ────────────────────────────────────────── */}
+              <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "8px 0" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <p style={{ margin: 0, fontSize: "11px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#D99E4F" }}>When</p>
+                <DeliveryTimeSelector value={scheduledFor} onChange={setScheduledFor} />
+              </div>
+
               {/* ── Billing ─────────────────────────────────────── */}
               <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "8px 0" }} />
 
@@ -796,6 +951,15 @@ export default function CheckoutPage() {
                 <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "26px", fontWeight: 600, color: "#D99E4F" }}>{formatMoney(subtotal)}</span>
               </div>
 
+              {scheduledFor && (
+                <div style={{ marginBottom: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(217,158,79,0.25)", background: "rgba(217,158,79,0.06)", fontSize: "13px", color: "#D99E4F", lineHeight: 1.5 }}>
+                  🕐 Scheduled for{" "}
+                  <strong>
+                    {new Intl.DateTimeFormat("en-AT", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(scheduledFor))}
+                  </strong>
+                </div>
+              )}
+
               {errorMessage && (
                 <div style={{ marginBottom: "16px", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,80,80,0.2)", background: "rgba(255,80,80,0.06)", fontSize: "13px", color: "#ff9090", lineHeight: 1.5 }}>
                   {errorMessage}
@@ -832,6 +996,7 @@ export default function CheckoutPage() {
                     deliveryMode={deliveryMode}
                     gpsCoords={gpsCoords}
                     subtotalCents={subtotalCents}
+                    scheduledFor={scheduledFor}
                     onValidationError={(msg) => setErrorMessage(msg)}
                     onSuccess={(orderNumber) => {
                       setCart([]);
