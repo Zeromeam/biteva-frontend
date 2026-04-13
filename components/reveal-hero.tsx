@@ -95,6 +95,9 @@ export default function RevealHero() {
           >
             {CONTACT_INSTAGRAM}
           </a>
+          <Link href="/complaint" style={{ opacity: 0.5 }}>
+            Submit a complaint
+          </Link>
         </div>
       </div>
     </section>

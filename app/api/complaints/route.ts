@@ -19,7 +19,7 @@ const createComplaintSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
   phone: z.string().max(50).optional(),
-  orderId: z.string().optional(),
+  orderNumber: z.string().max(50).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -38,19 +38,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { category, subject, message, name, email, phone, orderId } = parsed.data;
+  const { category, subject, message, name, email, phone, orderNumber: rawOrderNumber } = parsed.data;
 
-  // Verify orderId exists if provided
+  // Resolve orderNumber → orderId if provided
   let resolvedOrderId: string | null = null;
   let orderNumber: string | null = null;
-  if (orderId) {
+  if (rawOrderNumber) {
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { orderNumber: rawOrderNumber.trim() },
       select: { id: true, orderNumber: true },
     });
     if (order) {
       resolvedOrderId = order.id;
       orderNumber = order.orderNumber;
+    } else {
+      // Store the number as-is even if not found — don't silently drop it
+      orderNumber = rawOrderNumber.trim();
     }
   }
 

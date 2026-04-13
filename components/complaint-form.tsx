@@ -10,13 +10,13 @@ const CATEGORIES = [
 ] as const;
 
 type Props = {
-  orderNumber?: string;
-  orderId?: string;
+  initialOrderNumber?: string; // pre-filled from URL, but still editable
   initialName?: string;
   initialEmail?: string;
 };
 
-export function ComplaintForm({ orderNumber, orderId, initialName = "", initialEmail = "" }: Props) {
+export function ComplaintForm({ initialOrderNumber = "", initialName = "", initialEmail = "" }: Props) {
+  const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
   const [category, setCategory] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -43,7 +43,7 @@ export function ComplaintForm({ orderNumber, orderId, initialName = "", initialE
           name,
           email,
           phone: phone || undefined,
-          orderId: orderId || undefined,
+          orderNumber: orderNumber.trim() || undefined,
         }),
       });
 
@@ -97,12 +97,22 @@ export function ComplaintForm({ orderNumber, orderId, initialName = "", initialE
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {orderNumber && (
-        <div>
-          <span style={labelStyle}>Order</span>
-          <div style={{ fontSize: "15px", fontWeight: 600, color: "#e2ddd6" }}>{orderNumber}</div>
-        </div>
-      )}
+      {/* Order Number (optional) */}
+      <div>
+        <label htmlFor="cf-order" style={labelStyle}>
+          Order Number{" "}
+          <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — if your complaint is about a specific order)</span>
+        </label>
+        <input
+          id="cf-order"
+          type="text"
+          maxLength={50}
+          placeholder="e.g. BTV-12345"
+          value={orderNumber}
+          onChange={(e) => setOrderNumber(e.target.value)}
+          style={orderNumber ? { ...inputStyle, borderColor: "rgba(217,158,79,0.4)", color: "#D99E4F" } : inputStyle}
+        />
+      </div>
 
       {/* Category */}
       <div>
@@ -185,7 +195,10 @@ export function ComplaintForm({ orderNumber, orderId, initialName = "", initialE
 
       {/* Phone (optional) */}
       <div>
-        <label htmlFor="cf-phone" style={labelStyle}>Phone <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+        <label htmlFor="cf-phone" style={labelStyle}>
+          Phone{" "}
+          <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+        </label>
         <input
           id="cf-phone"
           type="tel"

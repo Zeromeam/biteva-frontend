@@ -25,6 +25,7 @@ type ReceiptOrder = {
 export function buildReceiptEmail(
   order: ReceiptOrder,
   receiptUrl: string,
+  complaintUrl?: string,
 ): { subject: string; html: string } {
   const isScheduled = !!order.scheduledFor;
   const subject = isScheduled
@@ -145,6 +146,13 @@ export function buildReceiptEmail(
               <div style="border-top:1px solid #eee;padding-top:20px;font-size:12px;color:#999;line-height:1.6;">
                 Gemäß § 6 Abs. 1 Z 27 UStG wird keine Umsatzsteuer berechnet.
               </div>
+
+              <!-- Complaint link -->
+              ${complaintUrl ? `
+              <div style="border-top:1px solid #eee;margin-top:20px;padding-top:20px;font-size:12px;color:#aaa;text-align:center;">
+                Something wrong with your order?
+                <a href="${complaintUrl}" style="color:#D99E4F;text-decoration:underline;margin-left:4px;">Submit a complaint</a>
+              </div>` : ""}
 
             </td>
           </tr>
