@@ -521,9 +521,218 @@ function ScheduledOrdersSection() {
   );
 }
 
+// ── Complaints Section ────────────────────────────────────────────────────
+
+type ComplaintStatus = "OPEN" | "IN_REVIEW" | "RESOLVED";
+type ComplaintCategory = "LATE_DELIVERY" | "WRONG_ORDER" | "QUALITY" | "OTHER";
+
+type ComplaintItem = {
+  id: string;
+  status: ComplaintStatus;
+  category: ComplaintCategory;
+  subject: string;
+  message: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  adminNote: string | null;
+  orderNumber: string | null;
+  createdAt: string;
+};
+
+const COMPLAINT_STATUS_LABELS: Record<ComplaintStatus, string> = {
+  OPEN: "Open",
+  IN_REVIEW: "In Review",
+  RESOLVED: "Resolved",
+};
+
+const COMPLAINT_CATEGORY_LABELS: Record<ComplaintCategory, string> = {
+  LATE_DELIVERY: "Late Delivery",
+  WRONG_ORDER: "Wrong Order",
+  QUALITY: "Quality Issue",
+  OTHER: "Other",
+};
+
+const COMPLAINT_STATUS_COLORS: Record<ComplaintStatus, string> = {
+  OPEN: "#EF4444",
+  IN_REVIEW: "#D99E4F",
+  RESOLVED: "#4caf50",
+};
+
+function ComplaintRow({
+  complaint,
+  isExpanded,
+  onToggle,
+  onUpdate,
+}: {
+  complaint: ComplaintItem;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdate: (updated: ComplaintItem) => void;
+}) {
+  const [draftStatus, setDraftStatus] = useState<ComplaintStatus>(complaint.status);
+  const [draftNote, setDraftNote] = useState(complaint.adminNote ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraftStatus(complaint.status);
+    setDraftNote(complaint.adminNote ?? "");
+  }, [complaint.id, complaint.status, complaint.adminNote]);
+
+  async function handleSave() {
+    setSaving(true); setSaveError(null);
+    try {
+      const res = await fetch(`/api/complaints/${complaint.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: draftStatus, adminNote: draftNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to save.");
+      onUpdate({ ...complaint, status: data.status, adminNote: data.adminNote });
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const statusColor = COMPLAINT_STATUS_COLORS[complaint.status];
+
+  return (
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", overflow: "hidden", marginBottom: "8px" }}>
+      <button type="button" onClick={onToggle}
+        style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(255,255,255,0.03)", border: "none", color: "#fff", cursor: "pointer", gap: "12px", textAlign: "left" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{complaint.subject}</div>
+          <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+            {complaint.name} · {COMPLAINT_CATEGORY_LABELS[complaint.category]}
+            {complaint.orderNumber && ` · Order ${complaint.orderNumber}`}
+            {" · "}{new Date(complaint.createdAt).toLocaleDateString("de-AT")}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          <span style={{ fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "99px", background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>
+            {COMPLAINT_STATUS_LABELS[complaint.status]}
+          </span>
+          <span style={{ color: "#888" }}>{isExpanded ? "▲" : "▼"}</span>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div style={{ padding: "16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div style={{ fontSize: "13px", color: "#e2ddd6", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{complaint.message}</div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px" }}>
+            <div><span style={{ color: "#525252" }}>Email: </span>{complaint.email}</div>
+            {complaint.phone && <div><span style={{ color: "#525252" }}>Phone: </span>{complaint.phone}</div>}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <label style={{ fontSize: "11px", color: "#525252", textTransform: "uppercase", letterSpacing: "0.1em" }}>Admin Note</label>
+            <textarea value={draftNote} onChange={(e) => setDraftNote(e.target.value)} rows={3}
+              style={{ background: "#111", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#e2ddd6", fontSize: "13px", padding: "10px 12px", resize: "vertical" }} />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <select value={draftStatus} onChange={(e) => setDraftStatus(e.target.value as ComplaintStatus)}
+              style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.12)", background: "#111", color: "#fff", fontSize: "13px" }}>
+              {(["OPEN", "IN_REVIEW", "RESOLVED"] as ComplaintStatus[]).map((s) => (
+                <option key={s} value={s}>{COMPLAINT_STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+            <button type="button" onClick={handleSave} disabled={saving}
+              style={{ padding: "8px 20px", borderRadius: "8px", border: "none", background: saving ? "#333" : "#D99E4F", color: saving ? "#888" : "#000", fontWeight: 700, fontSize: "13px", cursor: saving ? "not-allowed" : "pointer" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+            {saveError && <span style={{ fontSize: "12px", color: "#EF4444" }}>{saveError}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComplaintsSection() {
+  const [complaints, setComplaints] = useState<ComplaintItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<ComplaintStatus | "ALL">("ALL");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const pageCount = Math.max(1, Math.ceil(total / 20));
+
+  useEffect(() => {
+    setLoading(true); setError(null);
+    const params = new URLSearchParams({ page: String(page) });
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    fetch(`/api/complaints?${params}`)
+      .then((r) => r.json())
+      .then((data) => { setComplaints(data.complaints); setTotal(data.total); })
+      .catch(() => setError("Failed to load complaints."))
+      .finally(() => setLoading(false));
+  }, [page, statusFilter]);
+
+  function handleUpdate(updated: ComplaintItem) {
+    setComplaints((curr) => curr.map((c) => c.id === updated.id ? updated : c));
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+        <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#EF4444", flexShrink: 0 }} />
+        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>Complaints</h2>
+        <span style={{ fontSize: "12px", color: "#888" }}>Customer-submitted issues</span>
+      </div>
+
+      {/* Status filter */}
+      <div style={{ display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "wrap" }}>
+        {(["ALL", "OPEN", "IN_REVIEW", "RESOLVED"] as const).map((s) => (
+          <button key={s} type="button" onClick={() => { setStatusFilter(s); setPage(1); }}
+            style={{ padding: "6px 14px", borderRadius: "99px", border: `1px solid ${statusFilter === s ? "rgba(217,158,79,0.6)" : "rgba(255,255,255,0.1)"}`, background: statusFilter === s ? "rgba(217,158,79,0.12)" : "transparent", color: statusFilter === s ? "#D99E4F" : "#888", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+            {s === "ALL" ? "All" : COMPLAINT_STATUS_LABELS[s]}
+          </button>
+        ))}
+      </div>
+
+      {error && <p style={{ color: "#c0392b", fontSize: "13px" }}>{error}</p>}
+
+      {loading ? (
+        <p className="admin-empty-state">Loading…</p>
+      ) : complaints.length === 0 ? (
+        <p className="admin-empty-state">No complaints {statusFilter !== "ALL" ? `with status "${COMPLAINT_STATUS_LABELS[statusFilter]}"` : "yet"}.</p>
+      ) : (
+        <>
+          <div style={{ marginBottom: "8px", fontSize: "13px", color: "#888" }}>{total} total</div>
+          {complaints.map((c) => (
+            <ComplaintRow key={c.id} complaint={c}
+              isExpanded={expandedId === c.id}
+              onToggle={() => setExpandedId((prev) => prev === c.id ? null : c.id)}
+              onUpdate={handleUpdate} />
+          ))}
+          <div className="admin-pagination" style={{ marginTop: "16px" }}>
+            <button type="button" className="admin-page-button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || loading}>Previous</button>
+            <span style={{ fontSize: "13px", color: "#888" }}>Page {page} of {pageCount}</span>
+            <button type="button" className="admin-page-button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount || loading}>Next</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────
 
-type AdminSection = "live" | "scheduled";
+type AdminSection = "live" | "scheduled" | "complaints";
+
+const SECTION_CONFIG: Record<AdminSection, { label: string; color: string; bg: string }> = {
+  live: { label: "Live Orders", color: "#4caf50", bg: "rgba(76,175,80,0.2)" },
+  scheduled: { label: "Scheduled", color: "#6c8ebf", bg: "rgba(108,142,191,0.2)" },
+  complaints: { label: "Complaints", color: "#EF4444", bg: "rgba(239,68,68,0.2)" },
+};
 
 export default function AdminPage() {
   const [activeSection, setActiveSection] = useState<AdminSection>("live");
@@ -550,17 +759,22 @@ export default function AdminPage() {
 
       {/* Section tabs */}
       <div style={{ display: "flex", gap: "4px", marginTop: "24px", marginBottom: "16px", background: "rgba(255,255,255,0.04)", borderRadius: "12px", padding: "4px" }}>
-        {(["live", "scheduled"] as AdminSection[]).map((s) => (
-          <button key={s} type="button" onClick={() => setActiveSection(s)}
-            style={{ flex: 1, padding: "10px 16px", borderRadius: "9px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "14px", transition: "all 0.15s",
-              background: activeSection === s ? (s === "live" ? "rgba(76,175,80,0.2)" : "rgba(108,142,191,0.2)") : "transparent",
-              color: activeSection === s ? (s === "live" ? "#4caf50" : "#6c8ebf") : "#888" }}>
-            {s === "live" ? "Live Orders" : "Scheduled Orders"}
-          </button>
-        ))}
+        {(Object.keys(SECTION_CONFIG) as AdminSection[]).map((s) => {
+          const cfg = SECTION_CONFIG[s];
+          return (
+            <button key={s} type="button" onClick={() => setActiveSection(s)}
+              style={{ flex: 1, padding: "10px 16px", borderRadius: "9px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "14px", transition: "all 0.15s",
+                background: activeSection === s ? cfg.bg : "transparent",
+                color: activeSection === s ? cfg.color : "#888" }}>
+              {cfg.label}
+            </button>
+          );
+        })}
       </div>
 
-      {activeSection === "live" ? <LiveOrdersSection /> : <ScheduledOrdersSection />}
+      {activeSection === "live" && <LiveOrdersSection />}
+      {activeSection === "scheduled" && <ScheduledOrdersSection />}
+      {activeSection === "complaints" && <ComplaintsSection />}
     </main>
   );
 }

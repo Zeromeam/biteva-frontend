@@ -81,6 +81,7 @@ model Order {
   updatedAt             DateTime             @updatedAt
   items                 OrderItem[]
   statusHistory         OrderStatusHistory[]
+  complaints            Complaint[]
 
   @@index([isScheduled, scheduledFor])
   @@index([status])
@@ -119,6 +120,38 @@ model AppConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+}
+
+enum ComplaintCategory {
+  LATE_DELIVERY
+  WRONG_ORDER
+  QUALITY
+  OTHER
+}
+
+model Complaint {
+  id        String            @id @default(cuid())
+  status    ComplaintStatus   @default(OPEN)
+  category  ComplaintCategory
+  subject   String
+  message   String
+  name      String
+  email     String
+  phone     String?
+  orderId   String?
+  order     Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  adminNote String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([status])
+  @@index([orderId])
 }
 
 // Records per-day acknowledgments from the restaurant for "big days"

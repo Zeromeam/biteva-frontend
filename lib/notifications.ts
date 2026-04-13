@@ -5,6 +5,8 @@ import {
   buildReleaseNotificationEmail,
 } from "./email/restaurant-notification";
 import { buildDayBeforeReminderEmail } from "./email/day-before-reminder";
+import { buildComplaintNotificationEmail } from "./email/complaint-notification";
+import { buildComplaintConfirmationEmail } from "./email/complaint-confirmation";
 
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -87,5 +89,44 @@ export async function notifyRestaurantBigDayEscalation(alert: {
     await getResend().emails.send({ from: FROM, to: email, subject, html });
   } catch (err) {
     console.error("[notifications] Failed to send escalation:", err);
+  }
+}
+
+type ComplaintPayload = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  category: string;
+  subject: string;
+  message: string;
+  orderNumber: string | null;
+  createdAt: Date;
+};
+
+// Notify restaurant when a complaint is submitted
+export async function notifyRestaurantComplaint(
+  complaint: ComplaintPayload,
+): Promise<void> {
+  const email = await appConfig.restaurantNotificationEmail();
+  if (!email) return;
+
+  try {
+    const { subject, html } = buildComplaintNotificationEmail(complaint, `${APP_URL}/admin`);
+    await getResend().emails.send({ from: FROM, to: email, subject, html });
+  } catch (err) {
+    console.error("[notifications] Failed to send complaint notification:", err);
+  }
+}
+
+// Send acknowledgement email to the customer who submitted the complaint
+export async function notifyCustomerComplaintReceived(
+  complaint: ComplaintPayload,
+): Promise<void> {
+  try {
+    const { subject, html } = buildComplaintConfirmationEmail(complaint);
+    await getResend().emails.send({ from: FROM, to: complaint.email, subject, html });
+  } catch (err) {
+    console.error("[notifications] Failed to send complaint confirmation:", err);
   }
 }
