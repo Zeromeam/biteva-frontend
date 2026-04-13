@@ -9,17 +9,16 @@ type PageProps = {
 export default async function ComplaintPage({ searchParams }: PageProps) {
   const { orderNumber } = await searchParams;
 
-  let orderId: string | undefined;
   let initialName = "";
   let initialEmail = "";
 
+  // Pre-fill name & email if a valid order number was provided
   if (orderNumber) {
     const order = await prisma.order.findUnique({
       where: { orderNumber },
-      select: { id: true, shippingFullName: true, shippingEmail: true },
+      select: { shippingFullName: true, shippingEmail: true },
     });
     if (order) {
-      orderId = order.id;
       initialName = order.shippingFullName ?? "";
       initialEmail = order.shippingEmail ?? "";
     }
@@ -53,8 +52,7 @@ export default async function ComplaintPage({ searchParams }: PageProps) {
           {/* Card */}
           <div style={{ borderRadius: "22px", border: "1px solid rgba(255,255,255,0.08)", background: "#0c0c0c", padding: "32px" }}>
             <ComplaintForm
-              orderNumber={orderNumber}
-              orderId={orderId}
+              initialOrderNumber={orderNumber}
               initialName={initialName}
               initialEmail={initialEmail}
             />

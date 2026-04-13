@@ -357,10 +357,13 @@ export async function POST(request: Request) {
         });
 
         if (fullOrder) {
-          const receiptUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/orders/${order.orderNumber}`;
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+          const receiptUrl = `${baseUrl}/orders/${order.orderNumber}`;
+          const complaintUrl = `${baseUrl}/complaint?orderNumber=${order.orderNumber}`;
           const { subject, html } = buildReceiptEmail(
             { ...fullOrder, scheduledFor: scheduledForDate },
             receiptUrl,
+            complaintUrl,
           );
           await getResend().emails.send({
             from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
