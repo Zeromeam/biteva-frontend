@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCentsAsEuro } from "@/lib/money";
@@ -140,6 +141,14 @@ export default async function OrderReceiptPage({ params }: PageProps) {
             {/* VAT exemption note */}
             <div style={{ paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: "12px", color: "#525252", lineHeight: 1.7 }}>
               Gemäß § 6 Abs. 1 Z 27 UStG wird keine Umsatzsteuer berechnet.
+            </div>
+
+            {/* Complaint link */}
+            <div style={{ paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.04)", marginTop: "20px", fontSize: "13px", color: "#525252", textAlign: "center" }}>
+              Problem mit deiner Bestellung?{" "}
+              <Link href={`/complaint?orderNumber=${order.orderNumber}`} style={{ color: "#9a9290", textDecoration: "underline" }}>
+                Beschwerde einreichen
+              </Link>
             </div>
 
           </div>
