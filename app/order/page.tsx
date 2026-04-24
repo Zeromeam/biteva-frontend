@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { trackCustomizationStepReached, trackItemAddedToCart, trackProductOpened } from "@/lib/analytics";
 import {
   addCartItem,
   drinks,
@@ -364,6 +365,7 @@ export default function OrderPage() {
     setSaucesQm({});
     setPicklesQm({});
     setDrinksQm({});
+    trackProductOpened(product.id, product.name);
   }
   const closeBuilder = () => setActiveProduct(null);
 
@@ -403,6 +405,7 @@ export default function OrderPage() {
       drink:   selectedDrink,
       quantity: mainQty,
     });
+    trackItemAddedToCart(activeProduct.name, mainQty, totalPrice);
     setToast({ msg: `${mainQty}× ${activeProduct.name} added`, key: Date.now() });
     closeBuilder();
   }
@@ -686,7 +689,7 @@ export default function OrderPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={()=>setStepIndex(i=>i+1)}
+                      onClick={()=>{ setStepIndex(i=>i+1); trackCustomizationStepReached(STEPS[stepIndex+1].id, stepIndex+1, activeProduct!.name); }}
                       style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:"9px", height:"48px", borderRadius:"13px", border:"none", background:"#D99E4F", color:"#000", fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"14px", fontWeight:700, cursor:"pointer", letterSpacing:"0.01em", transition:"filter 0.18s, transform 0.18s" }}
                       onMouseEnter={e=>{ const el=e.currentTarget as HTMLButtonElement; el.style.filter="brightness(1.1)"; el.style.transform="translateY(-1px)"; }}
                       onMouseLeave={e=>{ const el=e.currentTarget as HTMLButtonElement; el.style.filter=""; el.style.transform=""; }}

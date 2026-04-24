@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackCheckoutStarted, trackPaymentAttempted } from "@/lib/analytics";
 import {
   BillingDetails,
   CartItem,
@@ -263,6 +264,7 @@ function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subto
   const handleExpressConfirm = async (event: StripeExpressCheckoutElementConfirmEvent) => {
     if (!stripe || !elements) return;
     if (!validate()) { event.paymentFailed({ reason: "fail" }); return; }
+    trackPaymentAttempted("express", subtotalCents / 100);
 
     const clientSecret = await fetchClientSecret(subtotalCents, false);
     if (!clientSecret) { event.paymentFailed({ reason: "fail" }); onError("Could not start payment."); return; }
@@ -302,6 +304,7 @@ function PaymentSection({ cart, details, billing, deliveryMode, gpsCoords, subto
   const handleToggleCard = async () => {
     if (showCardForm) { setShowCardForm(false); return; }
     if (!validate()) return;
+    trackPaymentAttempted("card", subtotalCents / 100);
     setIsLoadingCard(true);
     const secret = await fetchClientSecret(subtotalCents, true);
     setIsLoadingCard(false);
@@ -699,6 +702,14 @@ export default function CheckoutPage() {
     syncCart();
     return subscribeToCartUpdates(syncCart);
   }, []);
+
+  const trackedCheckout = useRef(false);
+  useEffect(() => {
+    if (!trackedCheckout.current && cart.length > 0) {
+      trackedCheckout.current = true;
+      trackCheckoutStarted(getCartCount(cart), getCartSubtotal(cart));
+    }
+  }, [cart]);
 
   const itemCount = useMemo(() => getCartCount(cart), [cart]);
   const subtotal = useMemo(() => getCartSubtotal(cart), [cart]);
