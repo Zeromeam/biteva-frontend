@@ -97,23 +97,6 @@ export function ComplaintForm({ initialOrderNumber = "", initialName = "", initi
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {/* Order Number (optional) */}
-      <div>
-        <label htmlFor="cf-order" style={labelStyle}>
-          Order Number{" "}
-          <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — if your complaint is about a specific order)</span>
-        </label>
-        <input
-          id="cf-order"
-          type="text"
-          maxLength={50}
-          placeholder="e.g. BTV-12345"
-          value={orderNumber}
-          onChange={(e) => setOrderNumber(e.target.value)}
-          style={orderNumber ? { ...inputStyle, borderColor: "rgba(217,158,79,0.4)", color: "#D99E4F" } : inputStyle}
-        />
-      </div>
-
       {/* Category */}
       <div>
         <label htmlFor="cf-category" style={labelStyle}>Category *</label>
@@ -207,6 +190,23 @@ export function ComplaintForm({ initialOrderNumber = "", initialName = "", initi
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           style={inputStyle}
+        />
+      </div>
+
+      {/* Order Number (optional) */}
+      <div>
+        <label htmlFor="cf-order" style={labelStyle}>
+          Order Number{" "}
+          <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — if your complaint is about a specific order)</span>
+        </label>
+        <input
+          id="cf-order"
+          type="text"
+          maxLength={50}
+          placeholder="e.g. BTV-12345"
+          value={orderNumber}
+          onChange={(e) => setOrderNumber(e.target.value)}
+          style={orderNumber ? { ...inputStyle, borderColor: "rgba(217,158,79,0.4)", color: "#D99E4F" } : inputStyle}
         />
       </div>
 
