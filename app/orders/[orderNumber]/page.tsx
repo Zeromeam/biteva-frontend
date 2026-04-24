@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCentsAsEuro } from "@/lib/money";
 import { PrintButton } from "./print-button";
+import { OrderCompletedTracker } from "./OrderCompletedTracker";
 
 type PageProps = {
   params: Promise<{ orderNumber: string }>;
@@ -30,6 +31,11 @@ export default async function OrderReceiptPage({ params }: PageProps) {
 
   return (
     <>
+      <OrderCompletedTracker
+        orderNumber={order.orderNumber}
+        subtotal={order.totalAmountCents / 100}
+        email={order.shippingEmail}
+      />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
