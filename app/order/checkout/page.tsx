@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { trackCheckoutStarted, trackPaymentAttempted } from "@/lib/analytics";
+import { trackCheckoutStarted, trackOrderCompleted, trackPaymentAttempted } from "@/lib/analytics";
 import {
   BillingDetails,
   CartItem,
@@ -1101,6 +1101,7 @@ export default function CheckoutPage() {
                     scheduledFor={scheduledFor}
                     onValidationError={(msg) => setErrorMessage(msg)}
                     onSuccess={(orderNumber) => {
+                      trackOrderCompleted(orderNumber, subtotal, details.email || undefined);
                       setCart([]);
                       setSuccessMessage(`Order ${orderNumber} placed successfully.`);
                     }}
